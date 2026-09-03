@@ -1,0 +1,221 @@
+import { TabWidget, ListView, Button, ComboBox, ScrollView, LineEdit, CheckBox } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { AppButton } from "app_button.slint";
+import { StatusBadge } from "status_badge.slint";
+import { SurfaceCard } from "surface_card.slint";
+import { SettingRow } from "setting_row.slint";
+import { SkeletonBlock, SkeletonSettingRow, SkeletonStorageRow, SkeletonRunnerRow, SkeletonTerminalLines } from "skeleton.slint";
+import { Lang, BenchmarkItem, HistoryItem, CompareRunColumn } from "../types.slint";
+
+export component CatalogTab inherits VerticalLayout {
+    callback select_version(string, string);
+    callback request_install(string, string);
+    callback request_uninstall(string, string);
+    in-out property <int> active_tab;
+    in-out property <bool> is_benchmark_running;
+    callback run_benchmark(string, string);
+    in-out property <[BenchmarkItem]> catalog;
+    callback open_benchmark_settings(string, string);
+
+    VerticalLayout {
+                    visible: root.active_tab == 0;
+                    spacing: Theme.space-md;
+    
+                    ListView {
+                        for item in root.catalog: VerticalLayout {
+                            padding-bottom: 8px;
+    
+                            SurfaceCard {
+                                min-height: 72px;
+    
+                                HorizontalLayout {
+                                    padding: Theme.space-md;
+                                    spacing: Theme.space-md;
+    
+                                    // Sol: İsim, Kategori Rozeti (Sabit Genişlik), Açıklama
+                                    VerticalLayout {
+                                        horizontal-stretch: 1;
+                                        spacing: 6px;
+                                        alignment: center;
+    
+                                        HorizontalLayout {
+                                            alignment: start;
+                                            spacing: Theme.space-sm;
+    
+                                            Text {
+                                                text: item.name;
+                                                font-size: 15px;
+                                                font-weight: 700;
+                                                color: Theme.text-main;
+                                                vertical-alignment: center;
+                                                horizontal-alignment: left;
+                                            }
+    
+                                            // Kategori Rozeti: Sadece metin boyutu + padding kadar yer kaplar
+                                            Rectangle {
+                                                background: Theme.bg-dark;
+                                                border-radius: Theme.radius-sm;
+                                                border-width: 1px;
+                                                border-color: Theme.border;
+                                                height: 22px;
+                                                width: cat_txt.preferred-width + 16px;
+    
+                                                cat_txt := Text {
+                                                    text: item.category;
+                                                    font-size: 11px;
+                                                    font-weight: 600;
+                                                    color: Theme.primary;
+                                                    horizontal-alignment: center;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+                                        }
+    
+                                        Text {
+                                            text: item.description + "  •  " + Lang.t("download_size", Lang.current) + ": " + item.download_size;
+                                            font-size: 12px;
+                                            color: Theme.text-muted;
+                                            overflow: elide;
+                                            horizontal-alignment: left;
+                                        }
+                                    }
+    
+                                    // Sağ: Versiyon Seçimi, Durum Rozeti, Butonlar (Dikeyde Tam Ortalanmış)
+                                    VerticalLayout {
+                                        alignment: center;
+                                        width: 45%;
+    
+                                        HorizontalLayout {
+                                            alignment: end;
+                                            spacing: Theme.space-sm;
+    
+                                            // Sütun 0: Özel Ayarlar Butonu (32px)
+                                            Rectangle {
+                                                width: 32px;
+                                                height: 32px;
+                                                background: (!item.installed || root.is_benchmark_running || item.running) ? Theme.surface-hover :
+                                                            (btn_cfg_touch.has-hover ? Theme.surface-hover : Theme.bg-dark);
+                                                border-radius: Theme.radius-sm;
+                                                border-width: 1px;
+                                                border-color: (item.installed && btn_cfg_touch.has-hover) ? Theme.primary : Theme.border;
+                                                opacity: item.installed ? 1.0 : 0.35;
+
+                                                btn_cfg_touch := TouchArea {
+                                                    mouse-cursor: (item.installed && !root.is_benchmark_running && !item.running) ? pointer : default;
+                                                    enabled: item.installed && !root.is_benchmark_running && !item.running;
+                                                    clicked => {
+                                                        if (item.installed) {
+                                                            root.open_benchmark_settings(item.id, item.selected_version);
+                                                        }
+                                                    }
+                                                }
+
+                                                Image {
+                                                    source: @image-url("../../resources/icons/settings.svg");
+                                                    width: 14px;
+                                                    height: 14px;
+                                                    colorize: (!item.installed) ? Theme.text-muted :
+                                                              (btn_cfg_touch.has-hover ? Theme.primary : Theme.text-muted);
+                                                    horizontal-alignment: center;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+    
+                                            // Sütun 1: Sürüm Seçimi Dropdown Slotu (140px)
+                                            Rectangle {
+                                                width: 25%;
+                                                height: 32px;
+    
+                                                if item.has_versions: ComboBox {
+                                                    width: 100%;
+                                                    height: 32px;
+                                                    model: item.versions;
+                                                    current-value: item.selected_version;
+                                                    current-index: item.selected_version_index;
+                                                    enabled: !root.is_benchmark_running && !item.running;
+                                                    selected(val) => { root.select_version(item.id, val); }
+                                                }
+    
+                                                if !item.has_versions: Rectangle {
+                                                    width: 100%;
+                                                    height: 32px;
+                                                    background: Theme.surface;
+                                                    border-radius: Theme.radius-sm;
+                                                    border-width: 1px;
+                                                    border-color: Theme.border;
+    
+                                                    HorizontalLayout {
+                                                        alignment: center;
+                                                        padding-left: Theme.space-sm;
+                                                        padding-right: Theme.space-sm;
+    
+                                                        Text {
+                                                            text: item.display_version != "" ? item.display_version : "v1.0";
+                                                            font-size: 11px;
+                                                            font-weight: 600;
+                                                            color: Theme.text-muted;
+                                                            vertical-alignment: center;
+                                                            horizontal-alignment: center;
+                                                            overflow: elide;
+                                                        }
+                                                    }
+                                                }
+                                            }
+    
+                                            // Sütun 2: Durum Rozeti Slotu (120px)
+                                            Rectangle {
+                                                width: 22%;
+                                                height: 32px;
+    
+                                                StatusBadge {
+                                                    width: 100%;
+                                                    badge_height: 32px;
+                                                    text: item.running ? Lang.t("running", Lang.current) : (item.installed ? Lang.t("installed", Lang.current) : Lang.t("not_installed", Lang.current));
+                                                    status: item.running ? "danger" : (item.installed ? "success" : "warning");
+                                                }
+                                            }
+    
+                                            // Sütun 3: İşlem Butonları Slotu (208px)
+                                            Rectangle {
+                                                width: 40%;
+                                                height: 32px;
+    
+                                                if !item.installed: AppButton {
+                                                    width: 100%;
+                                                    text: item.running ? Lang.t("loading", Lang.current) : Lang.t("install", Lang.current);
+                                                    variant: "primary";
+                                                    button_height: 32px;
+                                                    enabled: !root.is_benchmark_running && !item.running;
+                                                    clicked => { root.request_install(item.id, item.selected_version); }
+                                                }
+    
+                                                if item.installed: HorizontalLayout {
+                                                    spacing: Theme.space-sm;
+    
+                                                    AppButton {
+                                                        horizontal-stretch: 1;
+                                                        text: item.running ? Lang.t("running_ellipsis", Lang.current) : Lang.t("run", Lang.current);
+                                                        variant: "primary";
+                                                        button_height: 32px;
+                                                        enabled: !root.is_benchmark_running && !item.running;
+                                                        clicked => { root.run_benchmark(item.id, item.selected_version); }
+                                                    }
+    
+                                                    AppButton {
+                                                        horizontal-stretch: 0.8;
+                                                        text: Lang.t("uninstall", Lang.current);
+                                                        variant: "secondary";
+                                                        button_height: 32px;
+                                                        enabled: !root.is_benchmark_running && !item.running;
+                                                        clicked => { root.request_uninstall(item.id, item.selected_version); }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+}

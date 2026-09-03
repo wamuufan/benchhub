@@ -1,0 +1,47 @@
+id = "fio"
+name = "FIO"
+category = "Depolama"
+download_size = "~1.5 MB"
+description = "Depolama birimlerinin (NVMe, SSD, HDD) okuma ve yazma performansını ölçen endüstri standardı I/O kıyaslama aracı."
+default_version = "Seq-Read"
+score_regex = "(?:bw|BW)=([0-9\\.]+)(?:MiB/s|MB/s)"
+score_unit = "MB/s"
+run_cmd = "./fio"
+run_args = ["--name=seq_read", "--size=512M", "--rw=read", "--bs=1M", "--direct=1", "--ioengine=sync", "--time_based", "--runtime=15", "--unlink=1", "--filename=benchhub_fio_testfile"]
+download_cmd = "wget -q --show-progress -c https://github.com/axboe/fio/archive/refs/tags/fio-3.38.tar.gz -O fio-3.38.tar.gz && tar -xzf fio-3.38.tar.gz && cd fio-fio-3.38 && ./configure > /dev/null && make -j$(nproc) fio > /dev/null && cp fio ../fio && cd .. && rm -rf fio-fio-3.38 fio-3.38.tar.gz && chmod +x fio"
+
+[[versions]]
+version = "Seq-Read"
+download_size = "~1.5 MB"
+download_cmd = "wget -q --show-progress -c https://github.com/axboe/fio/archive/refs/tags/fio-3.38.tar.gz -O fio-3.38.tar.gz && tar -xzf fio-3.38.tar.gz && cd fio-fio-3.38 && ./configure > /dev/null && make -j$(nproc) fio > /dev/null && cp fio ../fio && cd .. && rm -rf fio-fio-3.38 fio-3.38.tar.gz && chmod +x fio"
+run_cmd = "./fio"
+run_args = ["--name=seq_read", "--size=512M", "--rw=read", "--bs=1M", "--direct=1", "--ioengine=sync", "--time_based", "--runtime=15", "--unlink=1", "--filename=benchhub_fio_testfile"]
+score_regex = "(?:bw|BW)=([0-9\\.]+)(?:MiB/s|MB/s)"
+score_unit = "MB/s"
+
+[[versions]]
+version = "Seq-Write"
+download_size = "~1.5 MB"
+download_cmd = "wget -q --show-progress -c https://github.com/axboe/fio/archive/refs/tags/fio-3.38.tar.gz -O fio-3.38.tar.gz && tar -xzf fio-3.38.tar.gz && cd fio-fio-3.38 && ./configure > /dev/null && make -j$(nproc) fio > /dev/null && cp fio ../fio && cd .. && rm -rf fio-fio-3.38 fio-3.38.tar.gz && chmod +x fio"
+run_cmd = "./fio"
+run_args = ["--name=seq_write", "--size=512M", "--rw=write", "--bs=1M", "--direct=1", "--ioengine=sync", "--time_based", "--runtime=15", "--unlink=1", "--filename=benchhub_fio_testfile"]
+score_regex = "(?:bw|BW)=([0-9\\.]+)(?:MiB/s|MB/s)"
+score_unit = "MB/s"
+
+[[versions]]
+version = "Rand-Read-4K"
+download_size = "~1.5 MB"
+download_cmd = "wget -q --show-progress -c https://github.com/axboe/fio/archive/refs/tags/fio-3.38.tar.gz -O fio-3.38.tar.gz && tar -xzf fio-3.38.tar.gz && cd fio-fio-3.38 && ./configure > /dev/null && make -j$(nproc) fio > /dev/null && cp fio ../fio && cd .. && rm -rf fio-fio-3.38 fio-3.38.tar.gz && chmod +x fio"
+run_cmd = "./fio"
+run_args = ["--name=rand_read_4k", "--size=256M", "--rw=randread", "--bs=4k", "--direct=1", "--ioengine=sync", "--time_based", "--runtime=15", "--unlink=1", "--filename=benchhub_fio_testfile"]
+score_regex = "(?:bw|BW)=([0-9\\.]+)(?:MiB/s|MB/s)"
+score_unit = "MB/s"
+
+[[versions]]
+version = "Rand-Write-4K"
+download_size = "~1.5 MB"
+download_cmd = "wget -q --show-progress -c https://github.com/axboe/fio/archive/refs/tags/fio-3.38.tar.gz -O fio-3.38.tar.gz && tar -xzf fio-3.38.tar.gz && cd fio-fio-3.38 && ./configure > /dev/null && make -j$(nproc) fio > /dev/null && cp fio ../fio && cd .. && rm -rf fio-fio-3.38 fio-3.38.tar.gz && chmod +x fio"
+run_cmd = "./fio"
+run_args = ["--name=rand_write_4k", "--size=256M", "--rw=randwrite", "--bs=4k", "--direct=1", "--ioengine=sync", "--time_based", "--runtime=15", "--unlink=1", "--filename=benchhub_fio_testfile"]
+score_regex = "(?:bw|BW)=([0-9\\.]+)(?:MiB/s|MB/s)"
+score_unit = "MB/s"

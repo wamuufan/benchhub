@@ -1,0 +1,29 @@
+fio (Flexible I/O Tester) Software License
+============================================
+
+fio - Flexible I/O tester
+Copyright (C) 2005-2024 Jens Axboe <axboe@kernel.dk>
+Website: https://github.com/axboe/fio
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License version 2 as published by the
+Free Software Foundation.
+
+1. PERMISSIONS & CONDITIONS:
+You may copy, distribute, and modify fio under the terms of GNU GPL version 2.
+Any binary redistribution must make the corresponding machine-readable source
+code available under the terms of the GPLv2.
+
+2. STORAGE DEVICE STRESS WARNING:
+fio is a high-performance I/O workload engine capable of driving storage devices
+(SSDs, NVMe drives, HDDs) to their physical and thermal throughput limits.
+Users should exercise caution when configuring long-duration, high-queue-depth,
+or raw-block device write tests, as extreme sustained write workloads may accelerate
+storage wear or degrade flash endurance.
+
+3. DISCLAIMER:
+THIS PROGRAM IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL, BUT WITHOUT ANY
+WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License version 2 for more details.
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY HARDWARE FAILURE OR DATA LOSS
+OCCURRING FROM STORAGE WORKLOAD EXECUTION.

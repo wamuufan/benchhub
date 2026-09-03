@@ -1,0 +1,51 @@
+import { Theme } from "../theme.slint";
+
+export component SettingRow inherits Rectangle {
+    in property <string> title;
+    in property <string> description;
+
+    min-height: 48px;
+    width: 100%;
+
+    HorizontalLayout {
+        padding-top: 2px;
+        padding-bottom: 2px;
+        spacing: Theme.space-lg;
+
+        // SOL TARAF: Başlık ve Açıklama (Genişliği doldurur, en sola yaslıdır)
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 3px;
+
+            Text {
+                text: root.title;
+                font-size: 13px;
+                font-weight: 700;
+                color: Theme.text-main;
+                horizontal-alignment: left;
+            }
+
+            if (root.description != ""): Text {
+                text: root.description;
+                font-size: 11px;
+                color: Theme.text-muted;
+                wrap: word-wrap;
+                horizontal-alignment: left;
+            }
+        }
+
+        // SAĞ TARAF: Kontroller (En sağa dayanır, dikeyde tam ortalanır)
+        VerticalLayout {
+            alignment: center;
+            width: 280px;
+
+            HorizontalLayout {
+                alignment: end;
+                spacing: Theme.space-sm;
+
+                @children
+            }
+        }
+    }
+}

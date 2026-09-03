@@ -1,0 +1,2901 @@
+import { CatalogTab } from "components/catalog_tab.slint";
+import { MonitorTab } from "components/monitor_tab.slint";
+import { HistoryTab } from "components/history_tab.slint";
+import { SettingsTab } from "components/settings_tab.slint";
+import { TabWidget, ListView, Button, ComboBox, ScrollView, LineEdit, CheckBox } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { AppButton } from "components/app_button.slint";
+import { StatusBadge } from "components/status_badge.slint";
+import { SurfaceCard } from "components/surface_card.slint";
+import { SettingRow } from "components/setting_row.slint";
+import { SkeletonBlock, SkeletonSettingRow, SkeletonStorageRow, SkeletonRunnerRow, SkeletonTerminalLines } from "components/skeleton.slint";
+
+import { BenchmarkItem, HistoryItem, CompareRunColumn, Lang } from "types.slint";
+export { BenchmarkItem, HistoryItem, CompareRunColumn, Lang } from "types.slint";
+
+export component AppWindow inherits Window {
+    title: Lang.t("window_title", Lang.current);
+    preferred-width: 1120px;
+    preferred-height: 780px;
+    min-width: 960px;
+    min-height: 640px;
+    background: Theme.bg-dark;
+    default-font-family: "sans-serif";
+
+    // Core Properties
+    in-out property <[BenchmarkItem]> catalog: [];
+    in-out property <[HistoryItem]> history: [];
+    
+    in property <float> cpu_temp: 0.0;
+    in property <float> gpu_temp: 0.0;
+    in property <float> cpu_freq: 0.0;
+    in property <float> power_w: 0.0;
+    in property <string> cpu_throttling_status: Lang.t("none", Lang.current);
+    in property <string> gpu_throttling_status: Lang.t("none", Lang.current);
+
+    in-out property <string> terminal_output: "";
+    in-out property <string> status_text: Lang.t("ready", Lang.current);
+    in-out property <int> active_tab: 0;
+    in-out property <bool> is_benchmark_running: false;
+    in-out property <string> active_benchmark_name: "";
+    in-out property <bool> tab1_ready: true;
+    in-out property <bool> tab2_ready: true;
+    in-out property <bool> tab3_ready: true;
+
+    // Queue / Run All Properties
+    in-out property <bool> is_queue_running: false;
+    in-out property <int> queue_current_index: 0;
+    in-out property <int> queue_total_count: 0;
+    in-out property <string> queue_status_text: "";
+
+    // GPU Selector & History Filters
+    in-out property <[string]> gpu_modes: ["Harici GPU (NVIDIA)", "Dahili GPU (iGPU)", "Sistem Varsayılanı"];
+    in-out property <string> selected_gpu_mode: "Harici GPU (NVIDIA)";
+    in-out property <int> selected_gpu_mode_index: 0;
+    in-out property <int> selected_history_count: 0;
+    in-out property <[string]> history_categories: ["Kategori: Tümü", "CPU", "GPU"];
+    in-out property <string> selected_history_category: "Kategori: Tümü";
+    in-out property <[string]> history_gpu_modes: ["GPU: Tümü", "NVIDIA dGPU", "iGPU", "Varsayılan"];
+    in-out property <string> selected_history_gpu_mode: "GPU: Tümü";
+    in-out property <[string]> history_statuses: ["Tümü", "TAMAMLANDI", "HATA", "İPTAL EDİLDİ"];
+    in-out property <string> selected_history_status: "Tümü";
+    in-out property <[string]> history_sort_options: ["Tarihe Göre (En Yeni)", "Tarihe Göre (En Eski)", "Skora Göre (Yüksek -> Düşük)", "Skora Göre (Düşük -> Yüksek)", "Süreye Göre (Hızlı -> Yavaş)"];
+    in-out property <string> selected_history_sort: "Tarihe Göre (En Yeni)";
+    in-out property <string> history_search_query: "";
+
+    // Language Settings
+    in-out property <[string]> available_languages: ["Türkçe", "English"];
+    in-out property <string> selected_language: "Türkçe";
+    in-out property <int> selected_language_index: 0;
+    callback change_language(string);
+
+    // Settings Properties
+    in-out property <string> data_dir_path: "";
+    in-out property <string> logs_dir_path: "";
+    in-out property <string> runners_size_text: "0 B";
+    in-out property <string> sensor_diagnosis_text: Lang.t("scanning_sensors", Lang.current);
+    in-out property <[string]> telemetry_intervals: ["250 ms (Yüksek Hız)", "500 ms (Varsayılan)", "1000 ms (1 saniye)", "2000 ms (2 saniye)"];
+    in-out property <string> selected_telemetry_interval: "500 ms (Varsayılan)";
+    in-out property <int> selected_telemetry_interval_index: 1;
+    in-out property <[string]> terminal_limits: ["80 Satır", "150 Satır (Varsayılan)", "300 Satır", "500 Satır"];
+    in-out property <string> selected_terminal_limit: "150 Satır (Varsayılan)";
+    in-out property <int> selected_terminal_limit_index: 1;
+    in-out property <[string]> save_stopped_options: ["Kaydet (Varsayılan)", "Kaydetme (Yoksay)"];
+    in-out property <string> selected_save_stopped: "Kaydet (Varsayılan)";
+    in-out property <int> selected_save_stopped_index: 0;
+    in-out property <[string]> max_duration_options: ["Sınırsız (Limit Yok)", "60 saniye (1 dk)", "120 saniye (2 dk)", "180 saniye (3 dk)", "300 saniye (5 dk - Önerilen)", "600 saniye (10 dk)"];
+    in-out property <string> selected_max_duration: "300 saniye (5 dk - Önerilen)";
+    in-out property <int> selected_max_duration_index: 4;
+
+    // Dialog & Modal Properties
+    in-out property <bool> show_confirm_dialog: false;
+    in-out property <string> dialog_title: "";
+    in-out property <string> dialog_name: "";
+    in-out property <string> dialog_category: "";
+    in-out property <string> dialog_size: "";
+    in-out property <string> dialog_desc: "";
+    in-out property <string> dialog_action_type: "";
+    in-out property <string> dialog_target_id: "";
+    in-out property <string> dialog_target_version: "";
+    in-out property <string> dialog_confirm_btn_text: Lang.t("confirm", Lang.current);
+
+    in-out property <bool> show_install_dialog: false;
+    in-out property <string> install_dialog_title: "";
+    in-out property <string> install_dialog_name: "";
+    in-out property <string> install_dialog_category: "";
+    in-out property <string> install_dialog_size: "";
+    in-out property <string> install_dialog_desc: "";
+    in-out property <string> install_dialog_log: "";
+    in-out property <string> install_dialog_status: Lang.t("ready", Lang.current);
+    in-out property <string> install_target_id: "";
+    in-out property <string> install_target_version: "";
+    in-out property <bool> is_installing: false;
+    in-out property <bool> install_finished: false;
+    in-out property <bool> install_success: false;
+    in-out property <string> install_dialog_eula: "";
+    in-out property <bool> install_eula_accepted: false;
+    in-out property <bool> install_liability_accepted: false;
+    in-out property <bool> show_install_eula: false;
+
+    in-out property <bool> show_details_dialog: false;
+    in-out property <int> details_active_tab: 0;
+    in-out property <string> details_title: "";
+    in-out property <string> details_benchmark_name: "";
+    in-out property <string> details_category: "";
+    in-out property <string> details_preset_version: "";
+    in-out property <string> details_gpu_mode: "";
+    in-out property <string> details_power_profile: "";
+    in-out property <string> details_score: "";
+    in-out property <string> details_status: "";
+    in-out property <string> details_duration: "";
+    in-out property <string> details_date: "";
+    in-out property <string> details_system_info: "";
+    in-out property <string> details_log_path: "";
+    in-out property <string> details_log_content: "";
+    in-out property <bool> show_details_log: false;
+    in-out property <string> details_avg_cpu_usage: "";
+    in-out property <string> details_peak_cpu_usage: "";
+    in-out property <string> details_avg_cpu_temp: "";
+    in-out property <string> details_peak_cpu_temp: "";
+    in-out property <string> details_avg_cpu_freq_mhz: "";
+    in-out property <string> details_peak_cpu_freq_mhz: "";
+    in-out property <string> details_avg_gpu_usage: "";
+    in-out property <string> details_peak_gpu_usage: "";
+    in-out property <string> details_avg_gpu_temp: "";
+    in-out property <string> details_peak_gpu_temp: "";
+    in-out property <string> details_avg_gpu_freq_mhz: "-";
+    in-out property <string> details_peak_gpu_freq_mhz: "-";
+    in-out property <string> details_avg_vram_freq_mhz: "-";
+    in-out property <string> details_peak_vram_freq_mhz: "-";
+    in-out property <string> details_avg_power_w: "";
+    in-out property <string> details_peak_power_w: "";
+    in-out property <string> details_avg_gpu_power_w: "-";
+    in-out property <string> details_peak_gpu_power_w: "-";
+    in-out property <string> details_avg_ac_power_w: "-";
+    in-out property <string> details_peak_ac_power_w: "-";
+    in-out property <string> details_avg_ram_gb: "";
+    in-out property <string> details_peak_ram_gb: "";
+    in-out property <string> details_avg_vram_gb: "-";
+    in-out property <string> details_peak_vram_gb: "-";
+    in-out property <string> details_cpu_throttling: "-";
+    in-out property <string> details_gpu_throttling: "-";
+
+    in-out property <bool> show_compare_dialog: false;
+    in-out property <[CompareRunColumn]> compare_runs: [];
+    in-out property <string> compare_diff_score: "";
+    in-out property <string> compare_diff_score_pct: "";
+    in-out property <string> compare_diff_score_badge_type: "";
+
+    // Custom Benchmark Settings Modal Properties
+    in-out property <bool> show_bench_config_dialog: false;
+    in-out property <string> bench_config_id: "";
+    in-out property <string> bench_config_version: "";
+    in-out property <string> bench_config_title: "";
+    in-out property <string> bench_config_desc: "";
+    in-out property <bool> bench_config_is_ffmpeg: false;
+    in-out property <bool> bench_config_is_7zip: false;
+    in-out property <bool> bench_config_is_unigine: false;
+    in-out property <bool> bench_config_has_preset: false;
+    in-out property <string> bench_config_preset_title: "";
+    in-out property <string> bench_config_preset_desc: "";
+    in-out property <[string]> bench_config_preset_options: [];
+    in-out property <string> bench_config_selected_preset: "";
+
+    // FFmpeg Properties
+    in-out property <[string]> bench_config_ffmpeg_codecs: [
+        "H.264 (libx264 - CPU)",
+        "H.265 / HEVC (libx265 - CPU)",
+        "AV1 (libsvtav1 - CPU Hızlı)",
+        "AV1 (libaom-av1 - CPU Referans)",
+        "VP9 (libvpx-vp9 - CPU)",
+        "H.264 NVENC (NVIDIA GPU)",
+        "HEVC NVENC (NVIDIA GPU)",
+        "AV1 NVENC (NVIDIA GPU)",
+        "H.264 VAAPI (Intel/AMD GPU)",
+        "HEVC VAAPI (Intel/AMD GPU)"
+    ];
+    in-out property <string> bench_config_ffmpeg_selected_codec: "H.264 (libx264 - CPU)";
+    in-out property <int> bench_config_ffmpeg_crf: 23;
+    in-out property <string> bench_config_ffmpeg_crf_str: "23";
+    in-out property <[string]> bench_config_ffmpeg_presets: ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"];
+    in-out property <string> bench_config_ffmpeg_selected_preset: "medium";
+    in-out property <[string]> bench_config_ffmpeg_resolutions: ["1080p FHD (1920x1080)", "4K UHD (3840x2160)", "1440p 2K (2560x1440)", "720p HD (1280x720)", "480p SD (854x480)"];
+    in-out property <string> bench_config_ffmpeg_selected_resolution: "1080p FHD (1920x1080)";
+    in-out property <[string]> bench_config_ffmpeg_input_sources: ["Big Buck Bunny (1080p)", "Tears of Steel (1080p)", "Sentetik Test Deseni"];
+    in-out property <string> bench_config_ffmpeg_selected_input_source: "Big Buck Bunny (1080p)";
+    in-out property <[string]> bench_config_ffmpeg_durations: ["20s (Önerilen)", "10s", "15s", "30s", "60s", "Süresiz (Tam Kaynak)"];
+    in-out property <string> bench_config_ffmpeg_selected_duration: "20s (Önerilen)";
+    in-out property <int> bench_config_ffmpeg_threads: 0;
+    in-out property <string> bench_config_ffmpeg_threads_str: "0";
+
+    // 7-Zip Properties
+    in-out property <int> bench_config_7zip_threads: 0;
+    in-out property <string> bench_config_7zip_threads_str: "0";
+    in-out property <[string]> bench_config_7zip_dict_sizes: ["32MB (Varsayılan)", "64MB", "128MB", "256MB", "512MB", "1024MB (1 GB)"];
+    in-out property <string> bench_config_7zip_selected_dict_size: "32MB (Varsayılan)";
+    in-out property <int> bench_config_7zip_passes: 1;
+    in-out property <string> bench_config_7zip_passes_str: "1";
+
+    // Unigine Properties
+    in-out property <[string]> bench_config_unigine_presets: ["1080p Extreme", "1080p High", "1080p Medium", "720p Low", "4K Optimized", "8K Optimized"];
+    in-out property <string> bench_config_unigine_selected_preset: "1080p Extreme";
+
+    // General Custom Args & Preview
+    in-out property <[string]> bench_config_duration_options: ["Varsayılan (Genel Ayar)", "Sınırsız (Limit Yok)", "30 saniye", "60 saniye (1 dk)", "120 saniye (2 dk)", "180 saniye (3 dk)", "300 saniye (5 dk)", "600 saniye (10 dk)"];
+    in-out property <string> bench_config_selected_duration: "Varsayılan (Genel Ayar)";
+    in-out property <string> bench_config_custom_args: "";
+    in-out property <string> bench_config_command_preview: "";
+
+    // Callbacks
+    callback select_version(string, string);
+    callback open_benchmark_settings(string, string);
+    callback close_benchmark_settings();
+    callback trigger_update_preview();
+    callback save_current_settings();
+    callback run_with_current_settings();
+    callback reset_benchmark_settings(string);
+    callback request_install(string, string);
+    callback start_install(string, string);
+    callback close_install_dialog();
+    callback request_uninstall(string, string);
+    callback request_clear_history();
+    callback request_clean_all_runners();
+    callback open_data_dir();
+    callback open_logs_dir();
+    callback change_telemetry_interval(string);
+    callback change_terminal_limit(string);
+    callback change_save_stopped_runs(string);
+    callback change_max_test_duration(string);
+    callback change_gpu_mode(string);
+    callback run_benchmark(string, string);
+    callback stop_benchmark();
+    callback clear_terminal();
+    callback delete_run_item(int);
+    callback filter_history_search(string);
+    callback filter_history_category(string);
+    callback filter_history_gpu_mode(string);
+    callback filter_history_status(string);
+    callback filter_history_sort(string);
+    callback toggle_history_selection(int);
+    callback show_run_details(int);
+    callback close_details_modal();
+    callback load_details_log();
+    callback open_comparison_modal();
+    callback close_compare_dialog();
+    callback export_comparison_image();
+    callback export_history_csv();
+    callback confirm_dialog(string, string, string);
+    callback cancel_dialog();
+    callback copy_log_to_clipboard(string);
+    callback run_all_benchmarks();
+    callback stop_all_benchmarks();
+
+    // ==========================================
+    // MAIN APPLICATION LAYOUT
+    // ==========================================
+    VerticalLayout {
+        padding: Theme.space-md;
+        spacing: Theme.space-md;
+
+        // Üst Başlık Çubuğu
+        HorizontalLayout {
+            height: 38px;
+            spacing: Theme.space-md;
+
+            // Sol: Logo, Başlık, Versiyon
+            HorizontalLayout {
+                horizontal-stretch: 0;
+                alignment: start;
+                spacing: Theme.space-sm;
+
+                Text {
+                    text: "⚡ BenchHub";
+                    font-size: 20px;
+                    font-weight: 800;
+                    color: Theme.text-main;
+                    vertical-alignment: center;
+                }
+            }
+
+            Rectangle { horizontal-stretch: 1; }
+
+            // Sağ: GPU Modu ve Durum Rozeti
+            HorizontalLayout {
+                horizontal-stretch: 0;
+                spacing: Theme.space-sm;
+
+                VerticalLayout {
+                    alignment: center;
+                    ComboBox {
+                        width: 280px;
+                        height: 32px;
+                        model: root.gpu_modes;
+                        current-index <=> root.selected_gpu_mode_index;
+                        selected(val) => { root.change_gpu_mode(val); }
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    StatusBadge {
+                        text: (root.is_queue_running && root.queue_status_text != "") ? root.queue_status_text : root.status_text;
+                        status: root.is_benchmark_running ? "danger" : "success";
+                        badge_height: 32px;
+                    }
+                }
+            }
+        }
+
+        // Aktif Test Banner'ı
+        if root.is_benchmark_running: Rectangle {
+            height: 48px;
+            background: Theme.danger.darker(0.6);
+            border-radius: Theme.radius-md;
+            border-width: 1px;
+            border-color: Theme.danger;
+
+            HorizontalLayout {
+                width: 100%;
+                height: 100%;
+                padding-left: Theme.space-lg;
+                padding-right: Theme.space-lg;
+                spacing: Theme.space-md;
+
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+
+                    Text {
+                        text: Lang.t("active_benchmark", Lang.current) + ": " + root.active_benchmark_name;
+                        font-size: 14px;
+                        font-weight: 700;
+                        color: #ffffff;
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+
+                    HorizontalLayout {
+                        spacing: Theme.space-sm;
+
+                        AppButton {
+                            text: Lang.t("stop_test", Lang.current);
+                            variant: "danger";
+                            button_height: 32px;
+                            clicked => { root.stop_benchmark(); }
+                        }
+
+                        if root.is_queue_running: AppButton {
+                            text: "⏹ " + Lang.t("btn_stop_all", Lang.current);
+                            variant: "danger";
+                            button_height: 32px;
+                            clicked => { root.stop_all_benchmarks(); }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // COMPACT NAVIGATION BAR & RUN ALL ACTION
+        // ==========================================
+        HorizontalLayout {
+            height: 38px;
+            alignment: space-between;
+            spacing: Theme.space-md;
+
+            // Sol: Kompakt Segmented Sekmeler
+            Rectangle {
+                background: Theme.surface;
+                border-radius: Theme.radius-md;
+                border-width: 1px;
+                border-color: Theme.border;
+                height: 40px;
+                width: 590px;
+
+                HorizontalLayout {
+                    padding: 3px;
+                    spacing: 4px;
+
+                    // Tab 0: Katalog
+                    tab0_touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.active_tab = 0; }
+
+                        Rectangle {
+                            border-radius: Theme.radius-sm;
+                            background: root.active_tab == 0 ? Theme.primary : (tab0_touch.has-hover ? Theme.surface-hover : #00000000);
+
+                            HorizontalLayout {
+                                alignment: center;
+                                spacing: 8px;
+                                padding-left: 10px;
+                                padding-right: 10px;
+
+                                VerticalLayout {
+                                alignment: center;
+                                Image {
+                                    source: @image-url("../resources/icons/catalog.svg");
+                                    width: 15px;
+                                    height: 15px;
+                                    colorize: root.active_tab == 0 ? #ffffff : Theme.text-muted;
+                                }
+                            }
+
+                                Text {
+                                    text: Lang.t("tab_catalog", Lang.current);
+                                    font-size: 12px;
+                                    font-weight: 700;
+                                    color: root.active_tab == 0 ? #ffffff : Theme.text-muted;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+
+                    // Tab 1: Canlı Monitör
+                    tab1_touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.active_tab = 1; }
+
+                        Rectangle {
+                            border-radius: Theme.radius-sm;
+                            background: root.active_tab == 1 ? Theme.primary : (tab1_touch.has-hover ? Theme.surface-hover : #00000000);
+
+                            HorizontalLayout {
+                                alignment: center;
+                                spacing: 8px;
+                                padding-left: 10px;
+                                padding-right: 10px;
+
+                                VerticalLayout {
+                                alignment: center;
+                                Image {
+                                    source: @image-url("../resources/icons/monitor.svg");
+                                    width: 15px;
+                                    height: 15px;
+                                    colorize: root.active_tab == 1 ? #ffffff : Theme.text-muted;
+                                }
+                            }
+
+                                Text {
+                                    text: Lang.t("tab_monitor", Lang.current);
+                                    font-size: 12px;
+                                    font-weight: 700;
+                                    color: root.active_tab == 1 ? #ffffff : Theme.text-muted;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+
+                    // Tab 2: Geçmiş & Loglar
+                    tab2_touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.active_tab = 2; }
+
+                        Rectangle {
+                            border-radius: Theme.radius-sm;
+                            background: root.active_tab == 2 ? Theme.primary : (tab2_touch.has-hover ? Theme.surface-hover : #00000000);
+
+                            HorizontalLayout {
+                                alignment: center;
+                                spacing: 8px;
+                                padding-left: 10px;
+                                padding-right: 10px;
+
+                                VerticalLayout {
+                                alignment: center;
+                                Image {
+                                    source: @image-url("../resources/icons/history.svg");
+                                    width: 15px;
+                                    height: 15px;
+                                    colorize: root.active_tab == 2 ? #ffffff : Theme.text-muted;
+                                }
+                            }
+
+                                Text {
+                                    text: Lang.t("tab_history", Lang.current);
+                                    font-size: 12px;
+                                    font-weight: 700;
+                                    color: root.active_tab == 2 ? #ffffff : Theme.text-muted;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+
+                    // Tab 3: Ayarlar
+                    tab3_touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.active_tab = 3; }
+
+                        Rectangle {
+                            border-radius: Theme.radius-sm;
+                            background: root.active_tab == 3 ? Theme.primary : (tab3_touch.has-hover ? Theme.surface-hover : #00000000);
+
+                            HorizontalLayout {
+                                alignment: center;
+                                spacing: 8px;
+                                padding-left: 10px;
+                                padding-right: 10px;
+
+                                VerticalLayout {
+                                alignment: center;
+                                Image {
+                                    source: @image-url("../resources/icons/settings.svg");
+                                    width: 15px;
+                                    height: 15px;
+                                    colorize: root.active_tab == 3 ? #ffffff : Theme.text-muted;
+                                }
+                            }
+
+                                Text {
+                                    text: Lang.t("tab_settings", Lang.current);
+                                    font-size: 12px;
+                                    font-weight: 700;
+                                    color: root.active_tab == 3 ? #ffffff : Theme.text-muted;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sağ: Açılan Boşluktaki "Tümünü Çalıştır" Butonu
+            if (root.active_tab == 0): HorizontalLayout {
+                alignment: end;
+                spacing: Theme.space-sm;
+
+                if !root.is_queue_running: AppButton {
+                    text: "🚀 " + Lang.t("btn_run_all", Lang.current);
+                    variant: "primary";
+                    button_height: 36px;
+                    enabled: !root.is_benchmark_running;
+                    clicked => { root.run_all_benchmarks(); }
+                }
+            }
+        }
+
+        // Ana İçerik Konteyneri
+        Rectangle {
+            vertical-stretch: 1;
+
+            // ==========================================
+            CatalogTab {
+    select_version(arg0, arg1) => { root.select_version(arg0, arg1); }
+    request_install(arg0, arg1) => { root.request_install(arg0, arg1); }
+    request_uninstall(arg0, arg1) => { root.request_uninstall(arg0, arg1); }
+    active_tab <=> root.active_tab;
+    is_benchmark_running <=> root.is_benchmark_running;
+    run_benchmark(arg0, arg1) => { root.run_benchmark(arg0, arg1); }
+    catalog <=> root.catalog;
+    open_benchmark_settings(arg0, arg1) => { root.open_benchmark_settings(arg0, arg1); }
+}
+
+            // ==========================================
+            MonitorTab {
+    cpu_temp: root.cpu_temp;
+    power_w: root.power_w;
+    gpu_temp: root.gpu_temp;
+    cpu_throttling_status: root.cpu_throttling_status;
+    gpu_throttling_status: root.gpu_throttling_status;
+    tab1_ready <=> root.tab1_ready;
+    active_tab <=> root.active_tab;
+    terminal_output <=> root.terminal_output;
+    clear_terminal() => { root.clear_terminal(); }
+    copy_log_to_clipboard(arg0) => { root.copy_log_to_clipboard(arg0); }
+    cpu_freq: root.cpu_freq;
+}
+
+            // ==========================================
+            HistoryTab {
+    selected_history_count <=> root.selected_history_count;
+    open_comparison_modal() => { root.open_comparison_modal(); }
+    filter_history_sort(arg0) => { root.filter_history_sort(arg0); }
+    selected_history_status <=> root.selected_history_status;
+    selected_history_gpu_mode <=> root.selected_history_gpu_mode;
+    selected_history_sort <=> root.selected_history_sort;
+    active_tab <=> root.active_tab;
+    filter_history_category(arg0) => { root.filter_history_category(arg0); }
+    history_search_query <=> root.history_search_query;
+    selected_history_category <=> root.selected_history_category;
+    history_statuses <=> root.history_statuses;
+    history_sort_options <=> root.history_sort_options;
+    filter_history_gpu_mode(arg0) => { root.filter_history_gpu_mode(arg0); }
+    open_logs_dir() => { root.open_logs_dir(); }
+    history_gpu_modes <=> root.history_gpu_modes;
+    filter_history_search(arg0) => { root.filter_history_search(arg0); }
+    show_run_details(arg0) => { root.show_run_details(arg0); }
+    export_history_csv() => { root.export_history_csv(); }
+    history_categories <=> root.history_categories;
+    toggle_history_selection(arg0) => { root.toggle_history_selection(arg0); }
+    filter_history_status(arg0) => { root.filter_history_status(arg0); }
+    tab2_ready <=> root.tab2_ready;
+    history <=> root.history;
+}
+
+            // ==========================================
+            SettingsTab {
+    change_terminal_limit(arg0) => { root.change_terminal_limit(arg0); }
+    tab3_ready <=> root.tab3_ready;
+    change_save_stopped_runs(arg0) => { root.change_save_stopped_runs(arg0); }
+    save_stopped_options <=> root.save_stopped_options;
+    selected_save_stopped_index <=> root.selected_save_stopped_index;
+    sensor_diagnosis_text <=> root.sensor_diagnosis_text;
+    change_max_test_duration(arg0) => { root.change_max_test_duration(arg0); }
+    data_dir_path <=> root.data_dir_path;
+    change_telemetry_interval(arg0) => { root.change_telemetry_interval(arg0); }
+    telemetry_intervals <=> root.telemetry_intervals;
+    max_duration_options <=> root.max_duration_options;
+    active_tab <=> root.active_tab;
+    logs_dir_path <=> root.logs_dir_path;
+    available_languages <=> root.available_languages;
+    open_data_dir() => { root.open_data_dir(); }
+    change_language(arg0) => { root.change_language(arg0); }
+    is_benchmark_running <=> root.is_benchmark_running;
+    selected_max_duration_index <=> root.selected_max_duration_index;
+    open_logs_dir() => { root.open_logs_dir(); }
+    selected_terminal_limit_index <=> root.selected_terminal_limit_index;
+    terminal_limits <=> root.terminal_limits;
+    selected_telemetry_interval_index <=> root.selected_telemetry_interval_index;
+    selected_language_index <=> root.selected_language_index;
+    request_clean_all_runners() => { root.request_clean_all_runners(); }
+    request_clear_history() => { root.request_clear_history(); }
+    runners_size_text <=> root.runners_size_text;
+}
+            }
+        }
+
+    // ==========================================
+    // MODAL DIALOGS & OVERLAYS
+    // ==========================================
+    // MODALS & OVERLAYS
+    // ==========================================
+
+    // Confirmation Dialog Modal (İki Yana Yaslı, Zarif ve Kusursuz Hizalı)
+    if root.show_confirm_dialog: Rectangle {
+        background: #000000bb;
+        width: 100%;
+        height: 100%;
+
+        TouchArea {}
+
+        Rectangle {
+            width: min(500px, parent.width * 0.9);
+            height: 250px;
+            background: Theme.surface;
+            border-radius: Theme.radius-md;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            VerticalLayout {
+                padding: Theme.space-lg;
+                spacing: Theme.space-md;
+
+                // 1. Header (İki Yana Yaslı Mimari)
+                HorizontalLayout {
+                    alignment: space-between;
+
+                    // Sol: İkon + Başlık
+                    HorizontalLayout {
+                        spacing: Theme.space-sm;
+                        alignment: start;
+
+                        VerticalLayout {
+                            alignment: center;
+                            Rectangle {
+                                width: 32px;
+                                height: 32px;
+                                border-radius: 16px;
+                                background: Theme.danger.darker(0.6);
+                                border-width: 1px;
+                                border-color: Theme.danger;
+
+                                Image {
+                                    source: @image-url("../resources/icons/warning.svg");
+                                    width: 16px;
+                                    height: 16px;
+                                    colorize: Theme.danger;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: 2px;
+
+                            Text {
+                                text: root.dialog_title;
+                                font-size: 15px;
+                                font-weight: 700;
+                                color: Theme.text-main;
+                                horizontal-alignment: left;
+                            }
+
+                            if root.dialog_name != "": Text {
+                                text: root.dialog_name;
+                                font-size: 12px;
+                                font-weight: 600;
+                                color: Theme.primary;
+                                horizontal-alignment: left;
+                            }
+                        }
+                    }
+
+                    // Sağ: Kapsam / Rozet
+                    if root.dialog_size != "": VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            background: Theme.bg-dark;
+                            border-radius: Theme.radius-sm;
+                            border-width: 1px;
+                            border-color: Theme.border;
+                            height: 26px;
+
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 8px;
+                                alignment: center;
+
+                                Text {
+                                    text: Lang.t("scope", Lang.current) + ": " + root.dialog_size;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                    color: Theme.text-muted;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Divider
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // 2. Body (Açıklama Alanı)
+                Rectangle {
+                    vertical-stretch: 1;
+                    background: Theme.bg-dark;
+                    border-radius: Theme.radius-sm;
+                    border-width: 1px;
+                    border-color: Theme.border;
+
+                    VerticalLayout {
+                        padding: Theme.space-md;
+                        alignment: center;
+
+                        Text {
+                            text: root.dialog_desc;
+                            font-size: 13px;
+                            color: Theme.text-muted;
+                            wrap: word-wrap;
+                            horizontal-alignment: left;
+                        }
+                    }
+                }
+
+                // Divider
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // 3. Footer (Sağa Yaslı Butonlar)
+                HorizontalLayout {
+                    spacing: Theme.space-sm;
+                    alignment: end;
+
+                    AppButton {
+                        text: Lang.t("cancel", Lang.current);
+                        variant: "secondary";
+                        button_height: 32px;
+                        padding_x: 16px;
+                        clicked => { root.cancel_dialog(); }
+                    }
+
+                    AppButton {
+                        text: root.dialog_confirm_btn_text;
+                        variant: "danger";
+                        button_height: 32px;
+                        padding_x: 16px;
+                        clicked => { root.confirm_dialog(root.dialog_action_type, root.dialog_target_id, root.dialog_target_version); }
+                    }
+                }
+            }
+        }
+    }
+
+    // Install Dialog Modal (Redesigned: Sleek, Modern, Terminal Card)
+    if root.show_install_dialog: Rectangle {
+        background: #000000bb;
+        width: 100%;
+        height: 100%;
+
+        TouchArea {}
+
+        Rectangle {
+            width: min(620px, parent.width * 0.92);
+            height: min(540px, parent.height * 0.90);
+            background: Theme.surface;
+            border-radius: Theme.radius-md;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            VerticalLayout {
+                padding: Theme.space-lg;
+                spacing: Theme.space-md;
+
+                // 1. Header (İki Yana Yaslı)
+                HorizontalLayout {
+                    alignment: space-between;
+
+                    // Sol: İkon + Başlık
+                    HorizontalLayout {
+                        spacing: Theme.space-sm;
+                        alignment: start;
+
+                        VerticalLayout {
+                            alignment: center;
+                            Rectangle {
+                                width: 32px;
+                                height: 32px;
+                                border-radius: 16px;
+                                background: Theme.primary.darker(0.6);
+                                border-width: 1px;
+                                border-color: Theme.primary;
+
+                                Image {
+                                    source: @image-url("../resources/icons/package.svg");
+                                    width: 16px;
+                                    height: 16px;
+                                    colorize: Theme.primary;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: 2px;
+
+                            Text {
+                                text: root.install_dialog_title;
+                                font-size: 15px;
+                                font-weight: 700;
+                                color: Theme.text-main;
+                                horizontal-alignment: left;
+                            }
+
+                            HorizontalLayout {
+                                spacing: 8px;
+                                alignment: start;
+
+                                Text {
+                                    text: root.install_dialog_category;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                    color: Theme.primary;
+                                }
+
+                                Text {
+                                    text: "•";
+                                    font-size: 11px;
+                                    color: Theme.text-muted;
+                                }
+
+                                Text {
+                                    text: Lang.t("download_size", Lang.current) + ": " + root.install_dialog_size;
+                                    font-size: 11px;
+                                    color: Theme.text-muted;
+                                }
+                            }
+                        }
+                    }
+
+                    // Sağ: Durum Rozeti
+                    VerticalLayout {
+                        alignment: center;
+                        StatusBadge {
+                            text: root.install_dialog_status;
+                            status: root.is_installing ? "warning" : (root.install_finished ? (root.install_success ? "success" : "danger") : "primary");
+                        }
+                    }
+                }
+
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // 2. Açıklama
+                if root.install_dialog_desc != "": Text {
+                    text: root.install_dialog_desc;
+                    font-size: 12px;
+                    color: Theme.text-muted;
+                    wrap: word-wrap;
+                    horizontal-alignment: left;
+                }
+
+                // 3. İçerik Alanı: Kurulum öncesi (EULA & Onay) veya Kurulum anı (Terminal Log)
+                if !root.is_installing && !root.install_finished: VerticalLayout {
+                    vertical-stretch: 1;
+                    spacing: Theme.space-sm;
+
+                    // EULA Metin Kutusu (Sadece "EULA'yı Göster" aktifken görünür)
+                    if root.show_install_eula: Rectangle {
+                        vertical-stretch: 1;
+                        background: #0b0d13;
+                        border-radius: Theme.radius-sm;
+                        border-width: 1px;
+                        border-color: Theme.border;
+                        clip: true;
+
+                        ScrollView {
+                            width: 100%;
+                            height: 100%;
+
+                            VerticalLayout {
+                                padding: 12px;
+                                spacing: 6px;
+
+                                Text {
+                                    text: Lang.t("eula_title", Lang.current);
+                                    font-size: 12px;
+                                    font-weight: 700;
+                                    color: Theme.text-main;
+                                }
+
+                                Text {
+                                    text: root.install_dialog_eula;
+                                    font-family: "monospace";
+                                    font-size: 11px;
+                                    color: #d1d5db;
+                                    wrap: word-wrap;
+                                }
+                            }
+                        }
+                    }
+
+                    // EULA Kapalıyken Bilgi Kutusu
+                    if !root.show_install_eula: Rectangle {
+                        vertical-stretch: 1;
+                        background: Theme.bg-dark;
+                        border-radius: Theme.radius-sm;
+                        border-width: 1px;
+                        border-color: Theme.border;
+
+                        VerticalLayout {
+                            padding: Theme.space-md;
+                            spacing: Theme.space-sm;
+                            alignment: center;
+
+                            Text {
+                                text: root.install_dialog_desc != "" ? root.install_dialog_desc : root.install_dialog_name;
+                                font-size: 13px;
+                                color: Theme.text-main;
+                                wrap: word-wrap;
+                                horizontal-alignment: center;
+                            }
+
+                            Text {
+                                text: Lang.t("download_size", Lang.current) + ": " + root.install_dialog_size;
+                                font-size: 12px;
+                                color: Theme.text-muted;
+                                horizontal-alignment: center;
+                            }
+                        }
+                    }
+
+                    // EULA Onay ve Göster/Gizle Şeridi
+                    Rectangle {
+                        background: Theme.bg-dark;
+                        border-radius: Theme.radius-sm;
+                        border-width: 1px;
+                        border-color: root.install_eula_accepted ? Theme.primary.darker(0.3) : Theme.border;
+
+                        HorizontalLayout {
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            padding-top: 8px;
+                            padding-bottom: 8px;
+                            spacing: Theme.space-sm;
+                            alignment: space-between;
+
+                            // Sol: Checkbox + Onay Metni
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                spacing: 8px;
+                                alignment: start;
+                                HorizontalLayout {
+                                    spacing: 8px;
+
+                                    VerticalLayout {
+                                        alignment: center;
+                                        CheckBox {
+                                            checked: root.install_eula_accepted;
+                                            toggled => { root.install_eula_accepted = !root.install_eula_accepted; }
+                                        }
+                                    }
+
+                                    VerticalLayout {
+                                        alignment: center;
+                                        horizontal-stretch: 1;
+                                        Text {
+                                            text: Lang.t("eula_checkbox", Lang.current);
+                                            font-size: 12px;
+                                            font-weight: 500;
+                                            color: root.install_eula_accepted ? Theme.text-main : Theme.text-muted;
+                                            wrap: word-wrap;
+                                        }
+                                    }
+                                }
+                                HorizontalLayout {
+                                    spacing: 8px;
+
+                                    VerticalLayout {
+                                        alignment: center;
+                                        CheckBox {
+                                            checked: root.install_liability_accepted;
+                                            toggled => { root.install_liability_accepted = !root.install_liability_accepted; }
+                                        }
+                                    }
+
+                                    VerticalLayout {
+                                        alignment: center;
+                                        horizontal-stretch: 1;
+                                        Text {
+                                            text: Lang.t("liability_checkbox", Lang.current);
+                                            font-size: 12px;
+                                            font-weight: 500;
+                                            color: root.install_liability_accepted ? Theme.text-main : Theme.text-muted;
+                                            wrap: word-wrap;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Sağ: EULA'yı Göster / Gizle Butonu ve Tümünü Kabul Et
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 8px;
+                                AppButton {
+                                    text: root.show_install_eula ? Lang.t("hide_eula", Lang.current) : Lang.t("show_eula", Lang.current);
+                                    variant: "secondary";
+                                    button_height: 26px;
+                                    padding_x: 10px;
+                                    clicked => { root.show_install_eula = !root.show_install_eula; }
+                                }
+                                AppButton {
+                                    text: Lang.t("accept_all", Lang.current);
+                                    variant: (root.install_eula_accepted && root.install_liability_accepted) ? "secondary" : "primary";
+                                    button_height: 26px;
+                                    padding_x: 10px;
+                                    clicked => {
+                                        root.install_eula_accepted = true;
+                                        root.install_liability_accepted = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 4. Kurulum Log Çıktısı (Kurulum Başlayınca veya Bitince)
+                if root.is_installing || root.install_finished: Rectangle {
+                    vertical-stretch: 1;
+                    background: #0b0d13;
+                    border-radius: Theme.radius-sm;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                    clip: true;
+
+                    ScrollView {
+                        width: 100%;
+                        height: 100%;
+
+                        VerticalLayout {
+                            padding: 10px;
+
+                            Text {
+                                text: root.install_dialog_log != "" ? root.install_dialog_log : "[BenchHub] " + Lang.t("status_installing_log", Lang.current) + "...";
+                                font-family: "monospace";
+                                font-size: 11px;
+                                color: #d1d5db;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // 5. Alt Butonlar
+                HorizontalLayout {
+                    spacing: Theme.space-sm;
+                    alignment: end;
+
+                    if !root.is_installing && !root.install_finished: AppButton {
+                        text: Lang.t("start_install", Lang.current);
+                        variant: (root.install_eula_accepted && root.install_liability_accepted) ? "primary" : "secondary";
+                        enabled: (root.install_eula_accepted && root.install_liability_accepted);
+                        button_height: 32px;
+                        padding_x: 16px;
+                        clicked => {
+                            if (root.install_eula_accepted && root.install_liability_accepted) {
+                                root.start_install(root.install_target_id, root.install_target_version);
+                            }
+                        }
+                    }
+
+                    AppButton {
+                        text: root.install_finished ? Lang.t("close", Lang.current) : Lang.t("cancel", Lang.current);
+                        variant: "secondary";
+                        button_height: 32px;
+                        padding_x: 16px;
+                        clicked => { root.close_install_dialog(); }
+                    }
+                }
+            }
+        }
+    }
+
+    // Benchmark Custom Settings Modal
+    if root.show_bench_config_dialog: Rectangle {
+        background: #000000bb;
+        width: 100%;
+        height: 100%;
+
+        TouchArea {}
+
+        Rectangle {
+            width: min(840px, parent.width * 0.92);
+            height: root.bench_config_is_ffmpeg ? min(700px, parent.height * 0.88) : min(560px, parent.height * 0.82);
+            background: Theme.surface;
+            border-radius: Theme.radius-md;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            VerticalLayout {
+                padding: Theme.space-lg;
+                spacing: Theme.space-md;
+
+                // Modal Header
+                HorizontalLayout {
+                    alignment: space-between;
+                    VerticalLayout {
+                        spacing: 3px;
+                        HorizontalLayout {
+                            spacing: Theme.space-sm;
+                            alignment: start;
+                            Image {
+                                source: @image-url("../resources/icons/settings.svg");
+                                width: 18px;
+                                height: 18px;
+                                colorize: Theme.primary;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: root.bench_config_title;
+                                font-size: 16px;
+                                font-weight: 700;
+                                color: Theme.text-main;
+                                vertical-alignment: center;
+                            }
+                        }
+                        Text {
+                            text: root.bench_config_desc;
+                            font-size: 12px;
+                            color: Theme.text-muted;
+                        }
+                    }
+
+                    // Close X button
+                    Rectangle {
+                        width: 28px;
+                        height: 28px;
+                        border-radius: Theme.radius-sm;
+                        background: close_cfg_touch.has-hover ? Theme.surface-hover : #00000000;
+                        close_cfg_touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.close_benchmark_settings(); }
+                        }
+                        Text {
+                            text: "✕";
+                            font-size: 14px;
+                            color: Theme.text-muted;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // Scrollable Form Body
+                ScrollView {
+                    VerticalLayout {
+                        spacing: Theme.space-md;
+                        padding-right: Theme.space-sm;
+
+                        // ================= Test Süresi Limiti (Her Test İçin) =================
+                        SettingRow {
+                            title: Lang.t("bench_settings_timeout", Lang.current);
+                            description: Lang.t("bench_settings_timeout_desc", Lang.current);
+                            ComboBox {
+                                width: 260px;
+                                height: 32px;
+                                model: root.bench_config_duration_options;
+                                current-value: root.bench_config_selected_duration;
+                                selected(val) => {
+                                    root.bench_config_selected_duration = val;
+                                }
+                            }
+                        }
+
+                        Rectangle { height: 1px; background: Theme.border; }
+
+                        // ================= FFmpeg Settings =================
+                        if root.bench_config_is_ffmpeg: VerticalLayout {
+                            spacing: Theme.space-sm;
+
+                            // Codec Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_codec", Lang.current);
+                                description: Lang.t("bench_settings_codec_desc", Lang.current);
+                                ComboBox {
+                                    width: 260px;
+                                    height: 32px;
+                                    model: root.bench_config_ffmpeg_codecs;
+                                    current-value: root.bench_config_ffmpeg_selected_codec;
+                                    selected(val) => {
+                                        root.bench_config_ffmpeg_selected_codec = val;
+                                        root.trigger_update_preview();
+                                    }
+                                }
+                            }
+
+                            // Video Kaynağı Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_video_source", Lang.current);
+                                description: (root.bench_config_ffmpeg_selected_input_source == "Sentetik Test Deseni"
+                                    || root.bench_config_ffmpeg_selected_input_source == "Synthetic Test Pattern"
+                                    || root.bench_config_ffmpeg_selected_input_source == Lang.t("bench_settings_source_synthetic", Lang.current))
+                                    ? Lang.t("bench_settings_video_source_synthetic", Lang.current)
+                                    : Lang.t("bench_settings_video_source_demo", Lang.current);
+                                ComboBox {
+                                    width: 260px;
+                                    height: 32px;
+                                    model: root.bench_config_ffmpeg_input_sources;
+                                    current-value: root.bench_config_ffmpeg_selected_input_source;
+                                    selected(val) => {
+                                        root.bench_config_ffmpeg_selected_input_source = val;
+                                        root.trigger_update_preview();
+                                    }
+                                }
+                            }
+
+                            // CRF Stepper Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_crf", Lang.current);
+                                description: Lang.t("bench_settings_crf_desc", Lang.current);
+                                HorizontalLayout {
+                                    spacing: 4px;
+                                    alignment: end;
+
+                                    Rectangle {
+                                        width: 32px;
+                                        height: 32px;
+                                        background: crf_minus_touch.has-hover ? Theme.surface-hover : Theme.bg-dark;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: 1px;
+                                        border-color: Theme.border;
+
+                                        crf_minus_touch := TouchArea {
+                                            mouse-cursor: pointer;
+                                            clicked => {
+                                                if root.bench_config_ffmpeg_crf > 0 {
+                                                    root.bench_config_ffmpeg_crf = root.bench_config_ffmpeg_crf - 1;
+                                                    root.bench_config_ffmpeg_crf_str = "" + root.bench_config_ffmpeg_crf;
+                                                    root.trigger_update_preview();
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            text: "-";
+                                            font-size: 16px;
+                                            font-weight: 700;
+                                            color: Theme.text-main;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+
+                                    LineEdit {
+                                        width: 60px;
+                                        height: 32px;
+                                        text: root.bench_config_ffmpeg_crf_str;
+                                        horizontal-alignment: center;
+                                        edited(text) => {
+                                            root.bench_config_ffmpeg_crf_str = text;
+                                            root.trigger_update_preview();
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: 32px;
+                                        height: 32px;
+                                        background: crf_plus_touch.has-hover ? Theme.surface-hover : Theme.bg-dark;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: 1px;
+                                        border-color: Theme.border;
+
+                                        crf_plus_touch := TouchArea {
+                                            mouse-cursor: pointer;
+                                            clicked => {
+                                                if root.bench_config_ffmpeg_crf < 51 {
+                                                    root.bench_config_ffmpeg_crf = root.bench_config_ffmpeg_crf + 1;
+                                                    root.bench_config_ffmpeg_crf_str = "" + root.bench_config_ffmpeg_crf;
+                                                    root.trigger_update_preview();
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            text: "+";
+                                            font-size: 16px;
+                                            font-weight: 700;
+                                            color: Theme.text-main;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Preset Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_preset", Lang.current);
+                                description: Lang.t("bench_settings_preset_desc", Lang.current);
+                                ComboBox {
+                                    width: 260px;
+                                    height: 32px;
+                                    model: root.bench_config_ffmpeg_presets;
+                                    current-value: root.bench_config_ffmpeg_selected_preset;
+                                    selected(val) => {
+                                        root.bench_config_ffmpeg_selected_preset = val;
+                                        root.trigger_update_preview();
+                                    }
+                                }
+                            }
+
+                            // Resolution Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_resolution", Lang.current);
+                                description: Lang.t("bench_settings_resolution_desc", Lang.current);
+                                ComboBox {
+                                    width: 260px;
+                                    height: 32px;
+                                    model: root.bench_config_ffmpeg_resolutions;
+                                    current-value: root.bench_config_ffmpeg_selected_resolution;
+                                    selected(val) => {
+                                        root.bench_config_ffmpeg_selected_resolution = val;
+                                        root.trigger_update_preview();
+                                    }
+                                }
+                            }
+
+                            // Duration Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_duration", Lang.current);
+                                description: Lang.t("bench_settings_duration_desc", Lang.current);
+                                ComboBox {
+                                    width: 260px;
+                                    height: 32px;
+                                    model: root.bench_config_ffmpeg_durations;
+                                    current-value: root.bench_config_ffmpeg_selected_duration;
+                                    selected(val) => {
+                                        root.bench_config_ffmpeg_selected_duration = val;
+                                        root.trigger_update_preview();
+                                    }
+                                }
+                            }
+
+                            // Threads Stepper Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_threads", Lang.current);
+                                description: root.bench_config_ffmpeg_threads == 0 ? Lang.t("bench_settings_threads_auto", Lang.current) : "" + root.bench_config_ffmpeg_threads + " " + Lang.t("bench_settings_threads", Lang.current);
+                                HorizontalLayout {
+                                    spacing: 4px;
+                                    alignment: end;
+
+                                    Rectangle {
+                                        width: 32px;
+                                        height: 32px;
+                                        background: ffmpeg_thr_minus_touch.has-hover ? Theme.surface-hover : Theme.bg-dark;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: 1px;
+                                        border-color: Theme.border;
+
+                                        ffmpeg_thr_minus_touch := TouchArea {
+                                            mouse-cursor: pointer;
+                                            clicked => {
+                                                if root.bench_config_ffmpeg_threads > 0 {
+                                                    root.bench_config_ffmpeg_threads = root.bench_config_ffmpeg_threads - 1;
+                                                    root.bench_config_ffmpeg_threads_str = "" + root.bench_config_ffmpeg_threads;
+                                                    root.trigger_update_preview();
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            text: "-";
+                                            font-size: 16px;
+                                            font-weight: 700;
+                                            color: Theme.text-main;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+
+                                    LineEdit {
+                                        width: 60px;
+                                        height: 32px;
+                                        text: root.bench_config_ffmpeg_threads_str;
+                                        horizontal-alignment: center;
+                                        edited(text) => {
+                                            root.bench_config_ffmpeg_threads_str = text;
+                                            root.trigger_update_preview();
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: 32px;
+                                        height: 32px;
+                                        background: ffmpeg_thr_plus_touch.has-hover ? Theme.surface-hover : Theme.bg-dark;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: 1px;
+                                        border-color: Theme.border;
+
+                                        ffmpeg_thr_plus_touch := TouchArea {
+                                            mouse-cursor: pointer;
+                                            clicked => {
+                                                if root.bench_config_ffmpeg_threads < 128 {
+                                                    root.bench_config_ffmpeg_threads = root.bench_config_ffmpeg_threads + 1;
+                                                    root.bench_config_ffmpeg_threads_str = "" + root.bench_config_ffmpeg_threads;
+                                                    root.trigger_update_preview();
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            text: "+";
+                                            font-size: 16px;
+                                            font-weight: 700;
+                                            color: Theme.text-main;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // ================= 7-Zip Settings =================
+                        if root.bench_config_is_7zip: VerticalLayout {
+                            spacing: Theme.space-sm;
+
+                            // 7-Zip Threads Stepper Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_threads", Lang.current);
+                                description: root.bench_config_7zip_threads == 0 ? Lang.t("bench_settings_threads_auto", Lang.current) : "" + root.bench_config_7zip_threads + " " + Lang.t("bench_settings_threads", Lang.current);
+                                HorizontalLayout {
+                                    spacing: 4px;
+                                    alignment: end;
+
+                                    Rectangle {
+                                        width: 32px;
+                                        height: 32px;
+                                        background: zip_thr_minus_touch.has-hover ? Theme.surface-hover : Theme.bg-dark;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: 1px;
+                                        border-color: Theme.border;
+
+                                        zip_thr_minus_touch := TouchArea {
+                                            mouse-cursor: pointer;
+                                            clicked => {
+                                                if root.bench_config_7zip_threads > 0 {
+                                                    root.bench_config_7zip_threads = root.bench_config_7zip_threads - 1;
+                                                    root.bench_config_7zip_threads_str = "" + root.bench_config_7zip_threads;
+                                                    root.trigger_update_preview();
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            text: "-";
+                                            font-size: 16px;
+                                            font-weight: 700;
+                                            color: Theme.text-main;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+
+                                    LineEdit {
+                                        width: 60px;
+                                        height: 32px;
+                                        text: root.bench_config_7zip_threads_str;
+                                        horizontal-alignment: center;
+                                        edited(text) => {
+                                            root.bench_config_7zip_threads_str = text;
+                                            root.trigger_update_preview();
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: 32px;
+                                        height: 32px;
+                                        background: zip_thr_plus_touch.has-hover ? Theme.surface-hover : Theme.bg-dark;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: 1px;
+                                        border-color: Theme.border;
+
+                                        zip_thr_plus_touch := TouchArea {
+                                            mouse-cursor: pointer;
+                                            clicked => {
+                                                if root.bench_config_7zip_threads < 128 {
+                                                    root.bench_config_7zip_threads = root.bench_config_7zip_threads + 1;
+                                                    root.bench_config_7zip_threads_str = "" + root.bench_config_7zip_threads;
+                                                    root.trigger_update_preview();
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            text: "+";
+                                            font-size: 16px;
+                                            font-weight: 700;
+                                            color: Theme.text-main;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Dictionary Size Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_dict_size", Lang.current);
+                                description: Lang.t("bench_settings_dict_size_desc", Lang.current);
+                                ComboBox {
+                                    width: 260px;
+                                    height: 32px;
+                                    model: root.bench_config_7zip_dict_sizes;
+                                    current-value: root.bench_config_7zip_selected_dict_size;
+                                    selected(val) => {
+                                        root.bench_config_7zip_selected_dict_size = val;
+                                        root.trigger_update_preview();
+                                    }
+                                }
+                            }
+
+                            // Passes Stepper Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_passes", Lang.current);
+                                description: Lang.t("bench_settings_passes_desc", Lang.current);
+                                HorizontalLayout {
+                                    spacing: 4px;
+                                    alignment: end;
+
+                                    Rectangle {
+                                        width: 32px;
+                                        height: 32px;
+                                        background: zip_pass_minus_touch.has-hover ? Theme.surface-hover : Theme.bg-dark;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: 1px;
+                                        border-color: Theme.border;
+
+                                        zip_pass_minus_touch := TouchArea {
+                                            mouse-cursor: pointer;
+                                            clicked => {
+                                                if root.bench_config_7zip_passes > 1 {
+                                                    root.bench_config_7zip_passes = root.bench_config_7zip_passes - 1;
+                                                    root.bench_config_7zip_passes_str = "" + root.bench_config_7zip_passes;
+                                                    root.trigger_update_preview();
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            text: "-";
+                                            font-size: 16px;
+                                            font-weight: 700;
+                                            color: Theme.text-main;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+
+                                    LineEdit {
+                                        width: 60px;
+                                        height: 32px;
+                                        text: root.bench_config_7zip_passes_str;
+                                        horizontal-alignment: center;
+                                        edited(text) => {
+                                            root.bench_config_7zip_passes_str = text;
+                                            root.trigger_update_preview();
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: 32px;
+                                        height: 32px;
+                                        background: zip_pass_plus_touch.has-hover ? Theme.surface-hover : Theme.bg-dark;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: 1px;
+                                        border-color: Theme.border;
+
+                                        zip_pass_plus_touch := TouchArea {
+                                            mouse-cursor: pointer;
+                                            clicked => {
+                                                if root.bench_config_7zip_passes < 50 {
+                                                    root.bench_config_7zip_passes = root.bench_config_7zip_passes + 1;
+                                                    root.bench_config_7zip_passes_str = "" + root.bench_config_7zip_passes;
+                                                    root.trigger_update_preview();
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            text: "+";
+                                            font-size: 16px;
+                                            font-weight: 700;
+                                            color: Theme.text-main;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // ================= Unigine Settings =================
+                        if root.bench_config_is_unigine: VerticalLayout {
+                            spacing: Theme.space-sm;
+
+                            // Unigine Preset Row
+                            SettingRow {
+                                title: Lang.t("bench_settings_unigine_preset", Lang.current);
+                                description: Lang.t("bench_settings_unigine_preset_desc", Lang.current);
+                                ComboBox {
+                                    width: 260px;
+                                    height: 32px;
+                                    model: root.bench_config_unigine_presets;
+                                    current-value: root.bench_config_unigine_selected_preset;
+                                    selected(val) => {
+                                        root.bench_config_unigine_selected_preset = val;
+                                        root.trigger_update_preview();
+                                    }
+                                }
+                            }
+                        }
+
+                        // Generic Benchmark Preset Selection Row
+                        if root.bench_config_has_preset: SettingRow {
+                            title: root.bench_config_preset_title;
+                            description: root.bench_config_preset_desc;
+                            ComboBox {
+                                width: 260px;
+                                height: 32px;
+                                model: root.bench_config_preset_options;
+                                current-value: root.bench_config_selected_preset;
+                                selected(val) => {
+                                    root.bench_config_selected_preset = val;
+                                    root.trigger_update_preview();
+                                }
+                            }
+                        }
+
+                        // Custom Extra CLI Arguments
+                        SettingRow {
+                            title: Lang.t("bench_settings_custom_args", Lang.current);
+                            description: Lang.t("bench_settings_custom_args_desc", Lang.current);
+                            LineEdit {
+                                width: 260px;
+                                height: 32px;
+                                text: root.bench_config_custom_args;
+                                placeholder-text: "-tune film ...";
+                                edited(text) => {
+                                    root.bench_config_custom_args = text;
+                                    root.trigger_update_preview();
+                                }
+                            }
+                        }
+
+                        // Command Preview Box
+                        Rectangle {
+                            background: Theme.bg-dark;
+                            border-radius: Theme.radius-sm;
+                            border-width: 1px;
+                            border-color: Theme.border;
+                            height: 52px;
+
+                            VerticalLayout {
+                                padding-left: Theme.space-sm;
+                                padding-right: Theme.space-sm;
+                                padding-top: 6px;
+                                padding-bottom: 6px;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "💻 " + Lang.t("bench_settings_cmd_preview", Lang.current);
+                                    font-size: 10px;
+                                    font-weight: 700;
+                                    color: Theme.primary;
+                                }
+
+                                Text {
+                                    text: root.bench_config_command_preview;
+                                    font-size: 10px;
+                                    color: Theme.text-main;
+                                    wrap: word-wrap;
+                                    overflow: elide;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // Footer Buttons
+                HorizontalLayout {
+                    spacing: Theme.space-sm;
+                    alignment: space-between;
+
+                    // Left: Reset
+                    AppButton {
+                        text: Lang.t("bench_settings_reset", Lang.current);
+                        variant: "secondary";
+                        clicked => {
+                            root.reset_benchmark_settings(root.bench_config_id);
+                        }
+                    }
+
+                    // Right: Cancel, Save, Run
+                    HorizontalLayout {
+                        spacing: Theme.space-sm;
+
+                        AppButton {
+                            text: Lang.t("cancel", Lang.current);
+                            variant: "secondary";
+                            clicked => { root.close_benchmark_settings(); }
+                        }
+
+                        AppButton {
+                            text: Lang.t("bench_settings_save", Lang.current);
+                            variant: "primary";
+                            clicked => {
+                                root.save_current_settings();
+                            }
+                        }
+
+                        AppButton {
+                            text: Lang.t("bench_settings_run_now", Lang.current);
+                            variant: "primary";
+                            clicked => {
+                                root.run_with_current_settings();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Run Details Modal
+    if root.show_details_dialog: Rectangle {
+        background: #000000aa;
+        width: 100%;
+        height: 100%;
+
+        TouchArea {}
+
+        Rectangle {
+            width: 75%;
+            height: 85%;
+            background: Theme.surface;
+            border-radius: Theme.radius-md;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            VerticalLayout {
+                padding: Theme.space-lg;
+                spacing: Theme.space-md;
+
+                // 1. En yukarıda: Testin Adı (Sol) ve Skor (Sağ)
+                HorizontalLayout {
+                    Text {
+                        text: root.details_benchmark_name + (root.details_preset_version != "" ? " (" + root.details_preset_version + ")" : "");
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: Theme.text-main;
+                        horizontal-stretch: 1;
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                    }
+
+                    HorizontalLayout {
+                        horizontal-stretch: 0;
+                        spacing: 8px;
+                        alignment: end;
+
+                        Text {
+                            text: Lang.t("score", Lang.current) + ":";
+                            font-size: 14px;
+                            font-weight: 600;
+                            color: Theme.text-muted;
+                            vertical-alignment: center;
+                        }
+
+                        Text {
+                            text: root.details_score;
+                            font-size: 22px;
+                            font-weight: 800;
+                            color: Theme.success;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+
+                // <hr> Çizgi
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // İçerik Kaydırma Alanı
+                ScrollView {
+                    VerticalLayout {
+                        spacing: Theme.space-md;
+                        padding-right: 4px;
+
+                        // 2. Dikey Sütunlara Ayrılmış Metrik Grupları
+                        HorizontalLayout {
+                            spacing: Theme.space-md;
+
+                            // SÜTUN 1: İŞLEMCİ (CPU) METRİKLERİ
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                spacing: Theme.space-xs;
+
+                                Text {
+                                    text: Lang.t("cpu_card_title", Lang.current);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    color: Theme.primary;
+                                    horizontal-alignment: center;
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("cpu_avg_usage", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_cpu_usage; font-size: 13px; font-weight: 700; color: #38bdf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("cpu_peak_usage", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_cpu_usage; font-size: 13px; font-weight: 700; color: #38bdf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("cpu_avg_temp", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_cpu_temp; font-size: 13px; font-weight: 700; color: #fb923c; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("cpu_peak_temp", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_cpu_temp; font-size: 13px; font-weight: 700; color: #fb923c; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("cpu_avg_freq", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_cpu_freq_mhz; font-size: 13px; font-weight: 700; color: #818cf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("cpu_peak_freq", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_cpu_freq_mhz; font-size: 13px; font-weight: 700; color: #818cf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("cpu_avg_power", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_power_w; font-size: 13px; font-weight: 700; color: #34d399; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("cpu_peak_power", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_power_w; font-size: 13px; font-weight: 700; color: #34d399; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px;
+                                    background: Theme.bg-dark;
+                                    border-radius: Theme.radius-sm;
+                                    border-width: (root.details_cpu_throttling != "Yok" && root.details_cpu_throttling != "Hayır" && root.details_cpu_throttling != "-" && root.details_cpu_throttling != "None" && root.details_cpu_throttling != Lang.t("none", Lang.current)) ? 1.5px : 1px;
+                                    border-color: (root.details_cpu_throttling != "Yok" && root.details_cpu_throttling != "Hayır" && root.details_cpu_throttling != "-" && root.details_cpu_throttling != "None" && root.details_cpu_throttling != Lang.t("none", Lang.current)) ? Theme.danger : Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("cpu_throttling", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text {
+                                            text: root.details_cpu_throttling;
+                                            font-size: 12px;
+                                            font-weight: 700;
+                                            color: Theme.text-main;
+                                            horizontal-alignment: center;
+                                            overflow: elide;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // DİKEY ÇİZGİ (Divider 1)
+                            Rectangle { width: 1px; background: Theme.border; }
+
+                            // SÜTUN 2: EKRAN KARTI (GPU) METRİKLERİ
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                spacing: Theme.space-xs;
+
+                                Text {
+                                    text: Lang.t("gpu_card_title", Lang.current);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    color: Theme.warning;
+                                    horizontal-alignment: center;
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("gpu_avg_usage", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_gpu_usage; font-size: 13px; font-weight: 700; color: #38bdf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("gpu_peak_usage", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_gpu_usage; font-size: 13px; font-weight: 700; color: #38bdf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("gpu_avg_temp", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_gpu_temp; font-size: 13px; font-weight: 700; color: #fb923c; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("gpu_peak_temp", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_gpu_temp; font-size: 13px; font-weight: 700; color: #fb923c; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("gpu_avg_freq", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_gpu_freq_mhz; font-size: 13px; font-weight: 700; color: #818cf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("gpu_peak_freq", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_gpu_freq_mhz; font-size: 13px; font-weight: 700; color: #818cf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("gpu_avg_power", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_gpu_power_w; font-size: 13px; font-weight: 700; color: #34d399; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("gpu_peak_power", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_gpu_power_w; font-size: 13px; font-weight: 700; color: #34d399; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px;
+                                    background: Theme.bg-dark;
+                                    border-radius: Theme.radius-sm;
+                                    border-width: (root.details_gpu_throttling != "Yok" && root.details_gpu_throttling != "Hayır" && root.details_gpu_throttling != "-" && root.details_gpu_throttling != "None" && root.details_gpu_throttling != Lang.t("none", Lang.current)) ? 1.5px : 1px;
+                                    border-color: (root.details_gpu_throttling == "Yok" || root.details_gpu_throttling == "Hayır" || root.details_gpu_throttling == "-" || root.details_gpu_throttling == "None" || root.details_gpu_throttling == Lang.t("none", Lang.current)) ? Theme.border : (root.details_gpu_throttling == "Güç Limiti" || root.details_gpu_throttling == Lang.t("throttling_power", Lang.current) ? Theme.warning : Theme.danger);
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("gpu_throttling", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text {
+                                            text: root.details_gpu_throttling;
+                                            font-size: 12px;
+                                            font-weight: 700;
+                                            color: Theme.text-main;
+                                            horizontal-alignment: center;
+                                            overflow: elide;
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("gpu_mode", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_gpu_mode; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; overflow: elide; }
+                                    }
+                                }
+                            }
+
+                            // DİKEY ÇİZGİ (Divider 2)
+                            Rectangle { width: 1px; background: Theme.border; }
+
+                            // SÜTUN 3: BELLEK (MEMORY) METRİKLERİ
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                spacing: Theme.space-xs;
+
+                                Text {
+                                    text: Lang.t("memory_card_title", Lang.current);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    color: #a855f7;
+                                    horizontal-alignment: center;
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("ram_avg", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_ram_gb; font-size: 13px; font-weight: 700; color: #38bdf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("ram_peak", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_ram_gb; font-size: 13px; font-weight: 700; color: #38bdf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("vram_avg", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_vram_gb; font-size: 13px; font-weight: 700; color: #c084fc; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("vram_peak", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_vram_gb; font-size: 13px; font-weight: 700; color: #c084fc; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("vram_freq_avg", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_vram_freq_mhz; font-size: 13px; font-weight: 700; color: #818cf8; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("vram_freq_peak", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_vram_freq_mhz; font-size: 13px; font-weight: 700; color: #818cf8; horizontal-alignment: center; }
+                                    }
+                                }
+                            }
+
+                            // DİKEY ÇİZGİ (Divider 3)
+                            Rectangle { width: 1px; background: Theme.border; }
+
+                            // SÜTUN 4: DİĞER
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                spacing: Theme.space-xs;
+
+                                Text {
+                                    text: Lang.t("other_card_title", Lang.current);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    color: Theme.text-main;
+                                    horizontal-alignment: center;
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("ac_power_avg", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_avg_ac_power_w; font-size: 13px; font-weight: 700; color: Theme.success; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("ac_power_peak", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_peak_ac_power_w; font-size: 13px; font-weight: 700; color: Theme.success; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("power_profile", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_power_profile != "" ? root.details_power_profile : Lang.t("unknown", Lang.current); font-size: 11px; font-weight: 700; color: #38bdf8; horizontal-alignment: center; overflow: elide; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("category", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_category; font-size: 13px; font-weight: 700; color: Theme.primary; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 52px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                                    VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
+                                        Text { text: Lang.t("duration", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        Text { text: root.details_duration; font-size: 13px; font-weight: 700; color: Theme.text-main; horizontal-alignment: center; }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Sistem Donanımı Bilgi Bandı
+                        if root.details_system_info != "": Rectangle {
+                            height: 32px;
+                            background: Theme.bg-dark;
+                            border-radius: Theme.radius-sm;
+                            border-width: 1px;
+                            border-color: Theme.border;
+                            HorizontalLayout {
+                                padding-left: Theme.space-md;
+                                padding-right: Theme.space-md;
+                                Text {
+                                    text: "💻 " + Lang.t("system", Lang.current) + ": " + root.details_system_info;
+                                    font-size: 11px;
+                                    color: Theme.text-muted;
+                                    horizontal-stretch: 1;
+                                    vertical-alignment: center;
+                                    horizontal-alignment: left;
+                                    overflow: elide;
+                                }
+                            }
+                        }
+
+                        // 3. Log Bölümü (İsteğe Bağlı Açılır Terminal)
+                        VerticalLayout {
+                            spacing: Theme.space-sm;
+
+                            HorizontalLayout {
+                                alignment: space-between;
+
+                                HorizontalLayout {
+                                    spacing: Theme.space-sm;
+                                    alignment: start;
+
+                                    Text {
+                                        text: Lang.t("terminal_log", Lang.current);
+                                        font-size: 13px;
+                                        font-weight: 700;
+                                        color: Theme.text-main;
+                                        vertical-alignment: center;
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    spacing: Theme.space-sm;
+                                    alignment: end;
+
+                                    if root.show_details_log: AppButton {
+                                        text: Lang.t("copy_log", Lang.current);
+                                        variant: "secondary";
+                                        button_height: 28px;
+                                        clicked => { root.copy_log_to_clipboard(root.details_log_content); }
+                                    }
+
+                                    AppButton {
+                                        text: root.show_details_log ? Lang.t("hide_log", Lang.current) : Lang.t("show_log", Lang.current);
+                                        variant: root.show_details_log ? "secondary" : "primary";
+                                        button_height: 28px;
+                                        clicked => {
+                                            root.show_details_log = !root.show_details_log;
+                                            if root.show_details_log {
+                                                root.load_details_log();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if root.show_details_log: Rectangle {
+                                background: #0b0d13;
+                                border-radius: Theme.radius-sm;
+                                border-width: 1px;
+                                border-color: Theme.border;
+                                height: 260px;
+                                clip: true;
+
+                                ScrollView {
+                                    width: 100%;
+                                    height: 100%;
+
+                                    VerticalLayout {
+                                        padding: 10px;
+
+                                        Text {
+                                            text: root.details_log_content != "" ? root.details_log_content : "[BenchHub] " + Lang.t("loading", Lang.current) + "...";
+                                            font-family: "monospace";
+                                            font-size: 11px;
+                                            color: #d1d5db;
+                                            wrap: word-wrap;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 4. En Aşağı Bölgede: Tarih ve Kapat Butonu
+                Rectangle { height: 1px; background: Theme.border; }
+
+                HorizontalLayout {
+                    Text {
+                        text: "📅 " + Lang.t("date", Lang.current) + ": " + root.details_date;
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: Theme.text-muted;
+                        horizontal-stretch: 1;
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                    }
+
+                    AppButton {
+                        text: Lang.t("close", Lang.current);
+                        variant: "secondary";
+                        button_height: 32px;
+                        clicked => {
+                            root.show_details_log = false;
+                            root.close_details_modal();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Compare Dialog Modal (Multi-Test Side-by-Side Matrix)
+    if root.show_compare_dialog: Rectangle {
+        background: #000000bb;
+        width: 100%;
+        height: 100%;
+
+        TouchArea {}
+
+        Rectangle {
+            width: root.compare_runs.length <= 2 ? 720px :
+                   root.compare_runs.length == 3 ? 920px :
+                   root.compare_runs.length == 4 ? 1080px : (parent.width * 0.94);
+            height: (parent.height * 0.78).max(560px).min(parent.height * 0.92);
+            background: Theme.surface;
+            border-radius: Theme.radius-md;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            VerticalLayout {
+                padding: Theme.space-lg;
+                spacing: Theme.space-sm;
+
+                // 1. Header
+                HorizontalLayout {
+                    Text {
+                        text: Lang.t("compare_title", Lang.current);
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: Theme.text-main;
+                        horizontal-stretch: 1;
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                    }
+
+                    Rectangle {
+                        background: Theme.bg-dark;
+                        border-radius: Theme.radius-sm;
+                        border-width: 1px;
+                        border-color: Theme.primary;
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            padding-top: 4px;
+                            padding-bottom: 4px;
+                            alignment: center;
+                            Text {
+                                text: root.compare_runs.length + " " + Lang.t("tests_compared", Lang.current);
+                                font-size: 12px;
+                                font-weight: 700;
+                                color: Theme.primary;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // 2. Üst Özet Bandı
+                Rectangle {
+                    height: 84px;
+                    background: Theme.bg-dark;
+                    border-radius: Theme.radius-sm;
+                    border-width: 1px;
+                    border-color: Theme.border;
+
+                    HorizontalLayout {
+                        HorizontalLayout {
+                            width: 190px;
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            Text {
+                                text: Lang.t("test_parameters", Lang.current);
+                                font-size: 13px;
+                                font-weight: 700;
+                                color: Theme.primary;
+                                vertical-alignment: center;
+                                horizontal-alignment: left;
+                            }
+                        }
+
+                        for col in root.compare_runs: HorizontalLayout {
+                            horizontal-stretch: 1;
+                            min-width: 140px;
+
+                            Rectangle {
+                                width: 1px;
+                                background: Theme.border;
+                            }
+
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                padding: 6px;
+                                alignment: center;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "[" + col.id + "] " + col.title;
+                                    font-size: 12px;
+                                    font-weight: 700;
+                                    color: Theme.text-main;
+                                    overflow: elide;
+                                    horizontal-alignment: center;
+                                }
+                                Text {
+                                    text: col.preset + " • " + col.gpu_mode;
+                                    font-size: 10px;
+                                    color: Theme.text-muted;
+                                    overflow: elide;
+                                    horizontal-alignment: center;
+                                }
+                                Text {
+                                    text: Lang.t("score", Lang.current) + ": " + col.score;
+                                    font-size: 14px;
+                                    font-weight: 800;
+                                    color: #10b981;
+                                    horizontal-alignment: center;
+                                }
+                                Text {
+                                    text: col.date;
+                                    font-size: 10px;
+                                    color: Theme.text-muted;
+                                    overflow: elide;
+                                    horizontal-alignment: center;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // 3. Alt Alta Dizilen Metrik Satırları (ScrollView)
+                ScrollView {
+                    VerticalLayout {
+                        spacing: 4px;
+                        padding-right: 4px;
+                        padding-bottom: 12px;
+
+                        // GRUP 1: 💻 İŞLEMCİ (CPU) METRİKLERİ
+                        Text { text: Lang.t("cpu_metrics_group", Lang.current); font-size: 11px; font-weight: 700; color: Theme.primary; }
+
+                        // CPU Kullanımı Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("cpu_usage_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.cpu_usage; font-size: 12px; font-weight: 700; color: #38bdf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // CPU Sıcaklık Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("cpu_temp_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.cpu_temp; font-size: 12px; font-weight: 700; color: #fb923c; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // CPU Frekans Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("cpu_freq_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.cpu_freq; font-size: 12px; font-weight: 700; color: #818cf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // CPU Güç Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("cpu_power_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.cpu_power; font-size: 12px; font-weight: 700; color: #34d399; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // CPU Throttling Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("cpu_throttling_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: col.has_cpu_throttling ? 1.5px : 0px;
+                                        border-color: col.has_cpu_throttling ? Theme.danger : transparent;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.cpu_throttling; font-size: 11px; font-weight: 700; color: Theme.text-main; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GRUP 2: 🎮 EKRAN KARTI (GPU) METRİKLERİ
+                        Text { text: Lang.t("gpu_metrics_group", Lang.current); font-size: 11px; font-weight: 700; color: Theme.warning; }
+
+                        // GPU Kullanımı Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_usage_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_usage; font-size: 12px; font-weight: 700; color: #38bdf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU Sıcaklık Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_temp_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_temp; font-size: 12px; font-weight: 700; color: #fb923c; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU Frekans Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_freq_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_freq; font-size: 12px; font-weight: 700; color: #818cf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU VRAM Frekans Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("vram_freq_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.vram_freq; font-size: 12px; font-weight: 700; color: #818cf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU Güç Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_power_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_power; font-size: 12px; font-weight: 700; color: #34d399; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU Throttling Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_throttling_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: col.has_gpu_throttling ? 1.5px : 0px;
+                                        border-color: col.has_gpu_throttling ? (col.gpu_throttling == "Güç Limiti" ? Theme.warning : Theme.danger) : transparent;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_throttling; font-size: 11px; font-weight: 700; color: Theme.text-main; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GRUP 3: 🧠 BELLEK METRİKLERİ
+                        Text { text: Lang.t("memory_metrics_group", Lang.current); font-size: 11px; font-weight: 700; color: #a855f7; }
+
+                        // Sistem RAM Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("ram_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.ram; font-size: 12px; font-weight: 700; color: #38bdf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU VRAM Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("vram_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.vram; font-size: 12px; font-weight: 700; color: #c084fc; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GRUP 4: 📦 SÜRE VE AC GÜÇ METRİKLERİ
+                        Text { text: Lang.t("other_metrics_group", Lang.current); font-size: 11px; font-weight: 700; color: Theme.text-main; }
+
+                        // Süre Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("duration_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.duration; font-size: 12px; font-weight: 700; color: Theme.text-main; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU Modu Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_mode", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_mode; font-size: 12px; font-weight: 700; color: #38bdf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Güç Profili Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("power_profile_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.power_profile != "" ? col.power_profile : Lang.t("unknown", Lang.current); font-size: 12px; font-weight: 700; color: #38bdf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // AC Güç Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("ac_power_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.ac_power; font-size: 12px; font-weight: 700; color: #34d399; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Donanım Bilgisi Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("system_info_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.system_info; font-size: 10px; color: Theme.text-muted; overflow: elide; vertical-alignment: center; horizontal-alignment: center; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 4. Footer Divider
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // 5. Footer: Sol tarafta özet metin, Sağ tarafta PNG Kaydet ve Kapat butonları
+                HorizontalLayout {
+                    spacing: Theme.space-sm;
+
+                    Text {
+                        text: Lang.t("compare_summary_prefix", Lang.current) + " " + root.compare_runs.length + " " + Lang.t("compare_summary_suffix", Lang.current);
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: Theme.text-muted;
+                        horizontal-stretch: 1;
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                        overflow: elide;
+                    }
+
+                    AppButton {
+                        text: Lang.t("export_png", Lang.current);
+                        variant: "primary";
+                        button_height: 32px;
+                        clicked => { root.export_comparison_image(); }
+                    }
+
+                    AppButton {
+                        text: Lang.t("close", Lang.current);
+                        variant: "secondary";
+                        button_height: 32px;
+                        clicked => { root.close_compare_dialog(); }
+                    }
+                }
+            }
+        }
+    }
+}

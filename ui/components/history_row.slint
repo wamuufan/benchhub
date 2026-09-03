@@ -1,0 +1,92 @@
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: Theme.space-sm;
+        alignment: center;
+
+        // 1. [✓] Checkbox: width: Theme.col-checkbox;
+        Rectangle {
+            width: Theme.col-checkbox;
+            HorizontalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: root.selected ? #38bdf8 : #45475a;
+                    background: root.selected ? #1e3a5f : #121417;
+
+                    Icon {
+                        icon: root.selected ? "check" : "";
+                        font-size: 16px;
+                        color: #38bdf8;
+                    }
+
+                    TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.toggle_selection(root.row_id); }
+                    }
+                }
+            }
+        }
+
+        // 2. Benchmark & Preset: flex
+        Rectangle {
+            horizontal-stretch: 1;
+            min-width: Theme.col-gpu-tel;
+            VerticalLayout {
+                alignment: center;
+                spacing: 3px;
+
+                Text {
+                    text: root.benchmark_id;
+                    font-size: 13px;
+               
+            }
+        }
+
+        // 8. Güç & RAM: width: Theme.col-power-ram;
+        Rectangle {
+            width: Theme.col-power-ram;
+            VerticalLayout {
+                alignment: center;
+                spacing: 2px;
+                Text { text: root.power_ram_avg_line; font-size: 11px; font-weight: 500; color: #94a3b8; overflow: elide; }
+                Text { text: root.power_ram_peak_line; font-size: 11px; font-weight: 700; color: #f9e2af; overflow: elide; }
+            }
+        }
+
+        // 9. Tarih & Saat: width: Theme.col-date;
+        Rectangle {
+            width: Theme.col-date;
+            Text {
+                text: root.date;
+                width: 100%;
+                height: 100%;
+                font-size: 11px;
+                color: Theme.text-muted;
+                vertical-alignment: center;
+            }
+        }
+
+        // 10. İşlemler: width: Theme.col-actions;
+        Rectangle {
+            width: Theme.col-actions;
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: center;
+
+                AppButton {
+                    text: "Detay"; icon: "visibility"; button_height: 28px; padding_x: 8px;
+                    clicked => { root.show_details(root.row_id); }
+                }
+                AppButton {
+                    text: "Sil"; icon: "delete"; variant: "danger"; button_height: 28px; padding_x: 8px;
+                    clicked => { root.delete_item(root.row_id); }
+                }
+            }
+        }
+    }
+}

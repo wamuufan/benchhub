@@ -1,0 +1,73 @@
+import { Theme } from "../theme.slint";
+
+export component AppButton inherits Rectangle {
+    in property <string> text;
+    in property <string> variant: "secondary"; // "primary", "secondary", "danger", "ghost"
+    in property <bool> enabled: true;
+    in property <length> button_height: 36px;
+    in property <length> padding_x: 16px;
+    in property <length> font_size: (root.button_height <= 26px ? 11px : (root.button_height <= 30px ? 12px : 13px));
+    callback clicked();
+
+    height: root.button_height;
+    border-radius: Theme.radius-sm;
+    clip: true;
+    
+    // Default (secondary)
+    background: !root.enabled ? Theme.surface-hover :
+                touch.pressed ? Theme.border :
+                touch.has-hover ? Theme.surface-hover : Theme.surface;
+    border-width: variant == "ghost" ? 0px : 1px;
+    border-color: !root.enabled ? Theme.border :
+                  (variant == "primary" ? Theme.primary : 
+                   variant == "danger" ? Theme.danger : Theme.border);
+
+    states [
+        primary when variant == "primary": {
+            background: !root.enabled ? Theme.surface-hover :
+                        touch.pressed ? Theme.primary-hover :
+                        touch.has-hover ? Theme.primary-hover : Theme.primary;
+            border-color: Theme.primary;
+        }
+        danger when variant == "danger": {
+            background: !root.enabled ? Theme.surface-hover :
+                        touch.pressed ? Theme.danger.darker(0.5) :
+                        touch.has-hover ? Theme.danger.darker(0.2) : Theme.danger;
+            border-color: Theme.danger;
+        }
+        ghost when variant == "ghost": {
+            background: !root.enabled ? transparent :
+                        touch.pressed ? Theme.surface :
+                        touch.has-hover ? Theme.surface-hover : transparent;
+            border-color: transparent;
+        }
+    ]
+
+    HorizontalLayout {
+        padding-left: root.padding_x;
+        padding-right: root.padding_x;
+        alignment: center;
+        
+        Text {
+            text: root.text;
+            color: !root.enabled ? Theme.text-muted :
+                   (variant == "primary" || variant == "danger") ? #ffffff : Theme.text-main;
+            font-size: root.font_size;
+            font-weight: 600;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+
+    touch := TouchArea {
+        width: 100%;
+        height: 100%;
+        mouse-cursor: root.enabled ? pointer : default;
+        clicked => {
+            if (root.enabled) {
+                root.clicked();
+            }
+        }
+    }
+}
+

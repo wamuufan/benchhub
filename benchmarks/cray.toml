@@ -1,0 +1,39 @@
+id = "cray"
+name = "C-Ray Raytracing"
+category = "Render"
+download_size = "~10 KB"
+description = "Saf C ile yazılmış çok kanallı (multi-threaded) raytracing render testidir."
+download_cmd = "wget -nv -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar -xvzf c-ray-1.1.tar.gz --strip-components=1 && gcc -O3 -pthread c-ray-mt.c -lm -o c-ray"
+run_cmd = "./c-ray"
+run_args = ["-i", "sphfract", "-s", "1920x1080", "-r", "8"]
+score_regex = "Rendering took:.*?\\((\\d+)\\s+milliseconds\\)"
+score_unit = "ms (düşük=iyi)"
+default_version = "1080p"
+
+[[versions]]
+version = "1080p"
+download_size = "~10 KB"
+download_cmd = "wget -nv -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar -xvzf c-ray-1.1.tar.gz --strip-components=1 && gcc -O3 -pthread c-ray-mt.c -lm -o c-ray"
+run_cmd = "./c-ray"
+run_args = ["-i", "sphfract", "-s", "1920x1080", "-r", "8"]
+score_regex = "Rendering took:.*?\\((\\d+)\\s+milliseconds\\)"
+score_unit = "ms (düşük=iyi)"
+
+[[versions]]
+version = "4K"
+download_size = "~10 KB"
+download_cmd = "wget -nv -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar -xvzf c-ray-1.1.tar.gz --strip-components=1 && gcc -O3 -pthread c-ray-mt.c -lm -o c-ray"
+run_cmd = "./c-ray"
+run_args = ["-i", "sphfract", "-s", "3840x2160", "-r", "16"]
+score_regex = "Rendering took:.*?\\((\\d+)\\s+milliseconds\\)"
+score_unit = "ms (düşük=iyi)"
+
+[[versions]]
+version = "720p"
+download_size = "~10 KB"
+download_cmd = "wget -nv -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar -xvzf c-ray-1.1.tar.gz --strip-components=1 && gcc -O3 -pthread c-ray-mt.c -lm -o c-ray"
+run_cmd = "./c-ray"
+run_args = ["-i", "sphfract", "-s", "1024x768"]
+score_regex = "Rendering took:.*?\\((\\d+)\\s+milliseconds\\)"
+score_unit = "ms (düşük=iyi)"
+

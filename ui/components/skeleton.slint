@@ -1,0 +1,151 @@
+import { Theme } from "../theme.slint";
+import { SurfaceCard } from "surface_card.slint";
+
+export component SkeletonBlock inherits Rectangle {
+    border-radius: Theme.radius-sm;
+    background: Theme.surface-hover;
+    border-width: 1px;
+    border-color: Theme.border;
+}
+
+export component SkeletonSettingRow inherits Rectangle {
+    in property <length> title_width: 160px;
+    in property <length> desc_width: 260px;
+    in property <length> control_width: 280px;
+
+    min-height: 48px;
+    width: 100%;
+
+    HorizontalLayout {
+        padding-top: 2px;
+        padding-bottom: 2px;
+        spacing: Theme.space-lg;
+
+        // Sol taraf: Başlık ve Açıklama (Tam sola hizalı)
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 5px;
+
+            HorizontalLayout {
+                alignment: start;
+                SkeletonBlock { width: root.title_width; height: 13px; }
+            }
+
+            HorizontalLayout {
+                alignment: start;
+                SkeletonBlock { width: root.desc_width; height: 11px; }
+            }
+        }
+
+        // Sağ taraf: Kontroller (En sağa yaslı)
+        VerticalLayout {
+            alignment: center;
+            width: 280px;
+
+            HorizontalLayout {
+                alignment: end;
+                SkeletonBlock { width: root.control_width; height: 32px; }
+            }
+        }
+    }
+}
+
+export component SkeletonStorageRow inherits Rectangle {
+    in property <length> title_width: 150px;
+    in property <length> desc_width: 280px;
+
+    min-height: 48px;
+    width: 100%;
+
+    HorizontalLayout {
+        padding-top: 2px;
+        padding-bottom: 2px;
+        spacing: Theme.space-lg;
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 5px;
+
+            HorizontalLayout {
+                alignment: start;
+                SkeletonBlock { width: root.title_width; height: 13px; }
+            }
+
+            HorizontalLayout {
+                alignment: start;
+                SkeletonBlock { width: root.desc_width; height: 11px; }
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            width: 280px;
+
+            HorizontalLayout {
+                alignment: end;
+                spacing: Theme.space-sm;
+
+                SkeletonBlock { horizontal-stretch: 1; height: 32px; }
+                SkeletonBlock { width: 90px; height: 32px; }
+            }
+        }
+    }
+}
+
+export component SkeletonRunnerRow inherits Rectangle {
+    min-height: 48px;
+    width: 100%;
+
+    HorizontalLayout {
+        padding-top: 2px;
+        padding-bottom: 2px;
+        spacing: Theme.space-lg;
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 5px;
+
+            HorizontalLayout {
+                alignment: start;
+                SkeletonBlock { width: 190px; height: 13px; }
+            }
+
+            HorizontalLayout {
+                alignment: start;
+                SkeletonBlock { width: 290px; height: 11px; }
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            width: 280px;
+
+            HorizontalLayout {
+                alignment: end;
+                spacing: Theme.space-sm;
+
+                SkeletonBlock { width: 85px; height: 32px; }
+                SkeletonBlock { horizontal-stretch: 1; height: 32px; }
+            }
+        }
+    }
+}
+
+export component SkeletonTerminalLines inherits VerticalLayout {
+    padding: 12px;
+    spacing: 10px;
+    alignment: start;
+
+    HorizontalLayout { alignment: start; SkeletonBlock { width: 220px; height: 12px; } }
+    HorizontalLayout { alignment: start; SkeletonBlock { width: 440px; height: 11px; } }
+    HorizontalLayout { alignment: start; SkeletonBlock { width: 310px; height: 11px; } }
+    HorizontalLayout { alignment: start; SkeletonBlock { width: 560px; height: 11px; } }
+    HorizontalLayout { alignment: start; SkeletonBlock { width: 380px; height: 11px; } }
+    HorizontalLayout { alignment: start; SkeletonBlock { width: 460px; height: 11px; } }
+    HorizontalLayout { alignment: start; SkeletonBlock { width: 290px; height: 11px; } }
+    HorizontalLayout { alignment: start; SkeletonBlock { width: 510px; height: 11px; } }
+    HorizontalLayout { alignment: start; SkeletonBlock { width: 350px; height: 11px; } }
+}

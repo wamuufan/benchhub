@@ -1,0 +1,29 @@
+id = "blender"
+name = "Blender Benchmark"
+category = "İşlemci (Render)"
+download_size = "~200 MB"
+description = "Blender açık kaynak 3D render motoru ile CPU ve GPU render başarım testi."
+download_cmd = "wget -q --show-progress -c https://download.blender.org/release/BlenderBenchmark2.0/launcher/benchmark-launcher-cli-3.3.0-linux.tar.gz && tar -xzf benchmark-launcher-cli-3.3.0-linux.tar.gz && chmod +x benchmark-launcher-cli && ./benchmark-launcher-cli blender download 4.2.0 && ./benchmark-launcher-cli scenes download monster --blender-version 4.2.0"
+run_cmd = "./benchmark-launcher-cli"
+run_args = ["benchmark", "monster", "--blender-version", "4.2.0", "--device-type", "CPU", "--json"]
+score_regex = "\"samples_per_minute\"[^\\d]*([\\d\\.]+)"
+score_unit = "samples/min"
+default_version = "4.2 (Stable)"
+
+[[versions]]
+version = "4.2 (Stable)"
+download_size = "~200 MB"
+download_cmd = "wget -q --show-progress -c https://download.blender.org/release/BlenderBenchmark2.0/launcher/benchmark-launcher-cli-3.3.0-linux.tar.gz && tar -xzf benchmark-launcher-cli-3.3.0-linux.tar.gz && chmod +x benchmark-launcher-cli && ./benchmark-launcher-cli blender download 4.2.0 && ./benchmark-launcher-cli scenes download monster --blender-version 4.2.0"
+run_cmd = "./benchmark-launcher-cli"
+run_args = ["benchmark", "monster", "--blender-version", "4.2.0", "--device-type", "CPU", "--json"]
+score_regex = "\"samples_per_minute\"[^\\d]*([\\d\\.]+)"
+score_unit = "samples/min"
+
+[[versions]]
+version = "4.1 (LTS)"
+download_size = "~200 MB"
+download_cmd = "wget -q --show-progress -c https://download.blender.org/release/BlenderBenchmark2.0/launcher/benchmark-launcher-cli-3.3.0-linux.tar.gz && tar -xzf benchmark-launcher-cli-3.3.0-linux.tar.gz && chmod +x benchmark-launcher-cli && ./benchmark-launcher-cli blender download 4.1.0 && ./benchmark-launcher-cli scenes download monster --blender-version 4.1.0"
+run_cmd = "./benchmark-launcher-cli"
+run_args = ["benchmark", "monster", "--blender-version", "4.1.0", "--device-type", "CPU", "--json"]
+score_regex = "\"samples_per_minute\"[^\\d]*([\\d\\.]+)"
+score_unit = "samples/min"

@@ -1,0 +1,27 @@
+Blender Foundation Software License Agreement
+==============================================
+
+Blender Benchmark & Blender Software
+Copyright (C) Blender Foundation / blender.org
+
+Blender is Free and Open Source software released under the GNU General Public
+License (GPL) version 2 or later.
+
+1. FREEDOMS GRANTED UNDER GNU GPL:
+- You are free to run Blender for any purpose (commercial, personal, educational).
+- You are free to study how the program works and adapt it to your needs.
+- You are free to redistribute copies of Blender under the terms of the GNU GPL.
+- You are free to improve the program and release your improvements to the public.
+
+2. BENCHMARK ASSETS & SCENES:
+The test scenes utilized by Blender Benchmark (including "Monster", "Junkshop", "Classroom")
+are creative assets created by the Blender community and the Blender Studio, distributed
+under Creative Commons Attribution (CC-BY) or GPL-compatible licenses.
+
+3. DISCLAIMER OF WARRANTY:
+BECAUSE THE PROGRAM IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY FOR THE PROGRAM,
+TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE
+COPYRIGHT HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY
+OF ANY KIND, EITHER EXPRESSED OR IMPLIED. IN NO EVENT WILL ANY COPYRIGHT HOLDER BE
+LIABLE TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL
+DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM.

@@ -1,0 +1,546 @@
+import { TabWidget, ListView, Button, ComboBox, ScrollView, LineEdit, CheckBox } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { AppButton } from "app_button.slint";
+import { StatusBadge } from "status_badge.slint";
+import { SurfaceCard } from "surface_card.slint";
+import { SettingRow } from "setting_row.slint";
+import { SkeletonBlock, SkeletonSettingRow, SkeletonStorageRow, SkeletonRunnerRow, SkeletonTerminalLines } from "skeleton.slint";
+import { Lang, BenchmarkItem, HistoryItem, CompareRunColumn } from "../types.slint";
+
+export component HistoryTab inherits VerticalLayout {
+    in-out property <int> selected_history_count;
+    callback open_comparison_modal();
+    callback filter_history_sort(string);
+    in-out property <string> selected_history_status;
+    in-out property <string> selected_history_gpu_mode;
+    in-out property <string> selected_history_sort;
+    in-out property <int> active_tab;
+    callback filter_history_category(string);
+    in-out property <string> history_search_query;
+    in-out property <string> selected_history_category;
+    in-out property <[string]> history_statuses;
+    in-out property <[string]> history_sort_options;
+    callback filter_history_gpu_mode(string);
+    callback open_logs_dir();
+    in-out property <[string]> history_gpu_modes;
+    callback filter_history_search(string);
+    callback show_run_details(int);
+    callback export_history_csv();
+    in-out property <[string]> history_categories;
+    callback toggle_history_selection(int);
+    callback filter_history_status(string);
+    in-out property <bool> tab2_ready;
+    in-out property <[HistoryItem]> history;
+
+    VerticalLayout {
+                    visible: root.active_tab == 2;
+                    spacing: Theme.space-md;
+    
+                        // Filtre ve Aksiyon Barı
+                        HorizontalLayout {
+                            spacing: Theme.space-sm;
+    
+                            LineEdit {
+                                placeholder-text: Lang.t("search_placeholder", Lang.current);
+                                text <=> root.history_search_query;
+                                edited(query) => { root.filter_history_search(query); }
+                                horizontal-stretch: 1;
+                                height: 32px;
+                            }
+    
+                            ComboBox {
+                                width: 12%;
+                                height: 32px;
+                                model: root.history_categories;
+                                current-value: root.selected_history_category;
+                                selected(val) => { root.filter_history_category(val); }
+                            }
+    
+                            ComboBox {
+                                width: 11%;
+                                height: 32px;
+                                model: root.history_gpu_modes;
+                                current-value: root.selected_history_gpu_mode;
+                                selected(val) => { root.filter_history_gpu_mode(val); }
+                            }
+    
+                            ComboBox {
+                                width: 10%;
+                                height: 32px;
+                                model: root.history_statuses;
+                                current-value: root.selected_history_status;
+                                selected(val) => { root.filter_history_status(val); }
+                            }
+    
+                            ComboBox {
+                                width: 16%;
+                                height: 32px;
+                                model: root.history_sort_options;
+                                current-value: root.selected_history_sort;
+                                selected(val) => { root.filter_history_sort(val); }
+                            }
+    
+                            if root.selected_history_count >= 2: AppButton {
+                                text: Lang.t("compare", Lang.current) + " (" + root.selected_history_count + ")";
+                                variant: "primary";
+                                button_height: 32px;
+                                clicked => { root.open_comparison_modal(); }
+                            }
+    
+                            AppButton {
+                                text: Lang.t("export_csv", Lang.current);
+                                variant: "secondary";
+                                button_height: 32px;
+                                clicked => { root.export_history_csv(); }
+                            }
+    
+                            AppButton {
+                                text: Lang.t("open_log_dir", Lang.current);
+                                variant: "secondary";
+                                button_height: 32px;
+                                clicked => { root.open_logs_dir(); }
+                            }
+                        }
+    
+                        // Tablo Alanı (Sabit Kutu)
+                        Rectangle {
+                            vertical-stretch: 1;
+    
+                            if !root.tab2_ready: ScrollView {
+                                GridLayout {
+                                    width: 100%;
+                                    spacing-horizontal: 0px;
+                                    spacing-vertical: 2px;
+    
+                                    // BAŞLIK SATIRI (HEADER ROW)
+                                    Row {
+                                        Rectangle {
+                                            width: 36px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: "#"; font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 3;
+                                            min-width: 130px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            HorizontalLayout { padding-left: 8px; Text { text: Lang.t("benchmark", Lang.current); font-weight: 700; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; } }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 2;
+                                            min-width: 90px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("gpu_mode", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 2;
+                                            min-width: 75px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("score", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 1;
+                                            min-width: 55px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("duration", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 2;
+                                            min-width: 75px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("cpu_load", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 2;
+                                            min-width: 85px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("cpu_temp", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 2;
+                                            min-width: 80px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("cpu_freq", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 2;
+                                            min-width: 75px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("gpu_load", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 2;
+                                            min-width: 85px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("gpu_temp", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 2;
+                                            min-width: 80px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("power", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 2;
+                                            min-width: 75px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("ram", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            horizontal-stretch: 2;
+                                            min-width: 85px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("date", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                        Rectangle {
+                                            width: 80px;
+                                            height: 36px;
+                                            background: Theme.surface;
+                                            Text { text: Lang.t("actions", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        }
+                                    }
+    
+                                    // Row 1 Skeleton
+                                    Row {
+                                        Rectangle { width: 36px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 16px; height: 16px; } } } }
+                                        Rectangle { horizontal-stretch: 3; min-width: 130px; height: 44px; background: Theme.surface; VerticalLayout { padding-left: 8px; alignment: center; spacing: 4px; HorizontalLayout { alignment: start; SkeletonBlock { width: 130px; height: 13px; } } HorizontalLayout { alignment: start; SkeletonBlock { width: 70px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 90px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 70px; height: 20px; border-radius: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 55px; height: 16px; } } } }
+                                        Rectangle { horizontal-stretch: 1; min-width: 55px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 38px; height: 12px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 40px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 48px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 42px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 45px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 52px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 40px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 48px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 42px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 46px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 54px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 44px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 12px; } } } }
+                                        Rectangle { width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 28px; } } } }
+                                    }
+    
+                                    // Row 2 Skeleton
+                                    Row {
+                                        Rectangle { width: 36px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 16px; height: 16px; } } } }
+                                        Rectangle { horizontal-stretch: 3; min-width: 130px; height: 44px; background: Theme.surface; VerticalLayout { padding-left: 8px; alignment: center; spacing: 4px; HorizontalLayout { alignment: start; SkeletonBlock { width: 110px; height: 13px; } } HorizontalLayout { alignment: start; SkeletonBlock { width: 60px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 90px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 70px; height: 20px; border-radius: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 55px; height: 16px; } } } }
+                                        Rectangle { horizontal-stretch: 1; min-width: 55px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 38px; height: 12px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 40px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 48px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 42px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 45px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 52px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 40px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 48px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 42px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 46px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 54px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 44px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 12px; } } } }
+                                        Rectangle { width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 28px; } } } }
+                                    }
+    
+                                    // Row 3 Skeleton
+                                    Row {
+                                        Rectangle { width: 36px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 16px; height: 16px; } } } }
+                                        Rectangle { horizontal-stretch: 3; min-width: 130px; height: 44px; background: Theme.surface; VerticalLayout { padding-left: 8px; alignment: center; spacing: 4px; HorizontalLayout { alignment: start; SkeletonBlock { width: 140px; height: 13px; } } HorizontalLayout { alignment: start; SkeletonBlock { width: 80px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 90px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 70px; height: 20px; border-radius: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 55px; height: 16px; } } } }
+                                        Rectangle { horizontal-stretch: 1; min-width: 55px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 38px; height: 12px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 40px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 48px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 42px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 45px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 52px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 40px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 48px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 42px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 46px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 54px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 44px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
+                                        Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 12px; } } } }
+                                        Rectangle { width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 28px; } } } }
+                                    }
+                                }
+                            }
+    
+                            if root.tab2_ready: ScrollView {
+                                GridLayout {
+                                    width: 100%;
+                                    spacing-horizontal: 0px;
+                                    spacing-vertical: 2px;
+    
+                                // ==========================================
+                                // BAŞLIK SATIRI (HEADER ROW)
+                                // ==========================================
+                                Row {
+                                    Rectangle {
+                                        width: 36px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: "#"; font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 3;
+                                        min-width: 130px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        HorizontalLayout { padding-left: 8px; Text { text: Lang.t("benchmark", Lang.current); font-weight: 700; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; } }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 2;
+                                        min-width: 90px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("gpu_mode", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 2;
+                                        min-width: 75px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("score", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 1;
+                                        min-width: 55px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("duration", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 2;
+                                        min-width: 75px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("cpu_load", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 2;
+                                        min-width: 85px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("cpu_temp", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 2;
+                                        min-width: 80px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("cpu_freq", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 2;
+                                        min-width: 75px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("gpu_load", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 2;
+                                        min-width: 85px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("gpu_temp", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 2;
+                                        min-width: 80px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("power", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 2;
+                                        min-width: 75px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("ram", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 2;
+                                        min-width: 85px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("date", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    Rectangle {
+                                        width: 80px;
+                                        height: 36px;
+                                        background: Theme.surface;
+                                        Text { text: Lang.t("actions", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                }
+    
+                                // ==========================================
+                                // VERİ SATIRLARI (DATA ROWS)
+                                // ==========================================
+                                for item in root.history: Row {
+                                    // 1. Checkbox
+                                    Rectangle {
+                                        width: 36px;
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        HorizontalLayout {
+                                            alignment: center;
+                                            CheckBox {
+                                                checked: item.selected;
+                                                toggled => { root.toggle_history_selection(item.id); }
+                                            }
+                                        }
+                                    }
+    
+                                    // 2. Benchmark & Preset
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        VerticalLayout {
+                                            padding-left: 8px;
+                                            padding-right: 4px;
+                                            alignment: center;
+                                            spacing: 2px;
+                                            Text { text: item.benchmark_id; font-size: 13px; font-weight: 700; color: Theme.text-main; overflow: elide; horizontal-alignment: left; }
+                                            Text { text: item.preset_or_version; font-size: 11px; color: Theme.text-muted; overflow: elide; horizontal-alignment: left; }
+                                        }
+                                    }
+    
+                                    // 3. GPU Modu
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        Text { text: item.gpu_mode; font-size: 12px; color: Theme.text-main; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+    
+                                    // 4. Skor
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        Text { text: item.score; font-size: 14px; font-weight: 700; color: Theme.success; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+    
+                                    // 5. Süre
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        Text { text: item.duration; font-size: 12px; color: Theme.text-main; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+    
+                                    // 6. CPU Yük
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            spacing: 2px;
+                                            Text { text: item.avg_cpu_usage; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
+                                            Text { text: item.cpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        }
+                                    }
+    
+                                    // 7. CPU Sıcaklık
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            spacing: 2px;
+                                            Text { text: item.avg_cpu_temp; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
+                                            Text { text: item.cpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        }
+                                    }
+    
+                                    // 8. CPU Hız
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            spacing: 2px;
+                                            Text { text: item.avg_cpu_freq_mhz; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
+                                            Text { text: item.cpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        }
+                                    }
+    
+                                    // 9. GPU Yük
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            spacing: 2px;
+                                            Text { text: item.avg_gpu_usage; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
+                                            Text { text: item.gpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        }
+                                    }
+    
+                                    // 10. GPU Sıcaklık
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            spacing: 2px;
+                                            Text { text: item.avg_gpu_temp; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
+                                            Text { text: item.gpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        }
+                                    }
+    
+                                    // 11. Güç
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            spacing: 2px;
+                                            Text { text: item.avg_power_w; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
+                                            Text { text: item.power_ram_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        }
+                                    }
+    
+                                    // 12. RAM
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            spacing: 2px;
+                                            Text { text: item.avg_ram_gb; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
+                                            Text { text: item.power_ram_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                        }
+                                    }
+    
+                                    // 13. Tarih
+                                    Rectangle {
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        Text { text: item.date; font-size: 11px; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+    
+                                    // 14. İşlem
+                                    Rectangle {
+                                        width: 80px;
+                                        height: 44px;
+                                        background: item.selected ? Theme.primary.darker(0.6) : Theme.surface;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            padding-left: 6px;
+                                            padding-right: 6px;
+    
+                                            AppButton {
+                                                text: Lang.t("details", Lang.current);
+                                                variant: "secondary";
+                                                button_height: 28px;
+                                                clicked => { root.show_run_details(item.id); }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+}

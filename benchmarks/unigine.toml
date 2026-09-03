@@ -1,0 +1,50 @@
+id = "unigine"
+name = "Unigine Superposition Benchmark"
+category = "Grafik (GPU)"
+description = "Unigine 3D motoru tabanlı dinamik ışıklandırma, SSRTGI ve VRAM stres testi."
+default_version = "Superposition"
+download_url = "https://assets.unigine.com/d/Unigine_Superposition-1.1.run"
+archive_type = "run"
+binary_relative_path = "extracted/bin/superposition"
+approx_size_mb = 1450
+score_regex = "(?i)(?:^|\\s)Score:\\s*([0-9]+)"
+score_unit = "Puan"
+run_cmd = "./superposition"
+run_args = [
+    "-sound_app", "null",
+    "-system_script", "superposition/system_script.cpp",
+    "-data_path", "../",
+    "-engine_config", "../data/superposition/unigine.cfg",
+    "-video_width", "1920",
+    "-video_height", "1080",
+    "-video_mode", "-1",
+    "-project_name", "Superposition",
+    "-video_resizable", "1",
+    "-console_command", "config_readonly 1 && world_load superposition/superposition",
+    "-mode", "2",
+    "-preset", "4"
+]
+
+[[versions]]
+version = "Superposition"
+download_url = "https://assets.unigine.com/d/Unigine_Superposition-1.1.run"
+archive_type = "run"
+binary_relative_path = "extracted/bin/superposition"
+approx_size_mb = 1450
+score_regex = "(?i)(?:^|\\s)Score:\\s*([0-9]+)"
+score_unit = "Puan"
+run_cmd = "./superposition"
+run_args = [
+    "-sound_app", "null",
+    "-system_script", "superposition/system_script.cpp",
+    "-data_path", "../",
+    "-engine_config", "../data/superposition/unigine.cfg",
+    "-video_width", "1920",
+    "-video_height", "1080",
+    "-video_mode", "-1",
+    "-project_name", "Superposition",
+    "-video_resizable", "1",
+    "-console_command", "config_readonly 1 && world_load superposition/superposition",
+    "-mode", "2",
+    "-preset", "4"
+]

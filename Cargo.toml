@@ -1,0 +1,51 @@
+[package]
+name = "benchhub"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[lib]
+name = "benchhub"
+path = "src/lib.rs"
+
+[[bin]]
+name = "benchhub"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+sysinfo = "0.30"
+regex = "1.10"
+anyhow = "1.0"
+chrono = "0.4"
+dirs = "5.0"
+libc = "0.2"
+slint = "1.17.1"
+resvg = "0.48.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[build-dependencies]
+slint-build = "1.17.1"
+cc = "1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 16
+panic = "abort"
+strip = true
+

@@ -1,0 +1,192 @@
+import { TabWidget, ListView, Button, ComboBox, ScrollView, LineEdit, CheckBox } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { AppButton } from "app_button.slint";
+import { StatusBadge } from "status_badge.slint";
+import { SurfaceCard } from "surface_card.slint";
+import { SettingRow } from "setting_row.slint";
+import { SkeletonBlock, SkeletonSettingRow, SkeletonStorageRow, SkeletonRunnerRow, SkeletonTerminalLines } from "skeleton.slint";
+import { Lang, BenchmarkItem, HistoryItem, CompareRunColumn } from "../types.slint";
+
+export component MonitorTab inherits VerticalLayout {
+    in property <float> cpu_temp;
+    in property <float> power_w;
+    in property <float> gpu_temp;
+    in property <string> cpu_throttling_status;
+    in property <string> gpu_throttling_status;
+    in-out property <bool> tab1_ready;
+    in-out property <int> active_tab;
+    in-out property <string> terminal_output;
+    callback clear_terminal();
+    callback copy_log_to_clipboard(string);
+    in property <float> cpu_freq;
+
+    VerticalLayout {
+                    visible: root.active_tab == 1;
+                    spacing: Theme.space-md;
+    
+                        // Telemetri Kartları
+                        HorizontalLayout {
+                            min-height: 75px;
+                            max-height: 85px;
+                            spacing: Theme.space-md;
+    
+                            SurfaceCard {
+                                horizontal-stretch: 1;
+                                border-color: root.cpu_temp >= 85 ? Theme.danger : (root.cpu_temp >= 75 ? Theme.warning : Theme.border);
+                                border-width: root.cpu_temp >= 75 ? 1.5px : 1px;
+                                VerticalLayout {
+                                    padding: Theme.space-md;
+                                    alignment: center;
+                                    spacing: 2px;
+                                    Text { text: Lang.t("cpu_temp", Lang.current); font-size: 12px; color: Theme.text-muted; horizontal-alignment: center; }
+                                    Text { text: round(root.cpu_temp) + " °C"; font-size: 20px; font-weight: 700; color: #fb923c; horizontal-alignment: center; }
+                                }
+                            }
+    
+                            SurfaceCard {
+                                horizontal-stretch: 1;
+                                border-color: root.gpu_temp >= 85 ? Theme.danger : (root.gpu_temp >= 75 ? Theme.warning : Theme.border);
+                                border-width: root.gpu_temp >= 75 ? 1.5px : 1px;
+                                VerticalLayout {
+                                    padding: Theme.space-md;
+                                    alignment: center;
+                                    spacing: 2px;
+                                    Text { text: Lang.t("gpu_temp", Lang.current); font-size: 12px; color: Theme.text-muted; horizontal-alignment: center; }
+                                    Text { text: round(root.gpu_temp) + " °C"; font-size: 20px; font-weight: 700; color: #fb923c; horizontal-alignment: center; }
+                                }
+                            }
+    
+                            SurfaceCard {
+                                horizontal-stretch: 1;
+                                VerticalLayout {
+                                    padding: Theme.space-md;
+                                    alignment: center;
+                                    spacing: 2px;
+                                    Text { text: Lang.t("cpu_freq", Lang.current); font-size: 12px; color: Theme.text-muted; horizontal-alignment: center; }
+                                    Text { text: round(root.cpu_freq) + " MHz"; font-size: 20px; font-weight: 700; color: #818cf8; horizontal-alignment: center; }
+                                }
+                            }
+    
+                            SurfaceCard {
+                                horizontal-stretch: 1;
+                                VerticalLayout {
+                                    padding: Theme.space-md;
+                                    alignment: center;
+                                    spacing: 2px;
+                                    Text { text: Lang.t("power_consumption", Lang.current); font-size: 12px; color: Theme.text-muted; horizontal-alignment: center; }
+                                    Text { text: round(root.power_w) + " W"; font-size: 20px; font-weight: 700; color: #34d399; horizontal-alignment: center; }
+                                }
+                            }
+    
+                            SurfaceCard {
+                                horizontal-stretch: 1;
+                                border-color: root.cpu_throttling_status == "Yok" || root.cpu_throttling_status == "Hayır" || root.cpu_throttling_status == "None" || root.cpu_throttling_status == "-" || root.cpu_throttling_status == Lang.t("none", Lang.current) ? Theme.border : Theme.danger;
+                                border-width: (root.cpu_throttling_status != "Yok" && root.cpu_throttling_status != "Hayır" && root.cpu_throttling_status != "None" && root.cpu_throttling_status != "-" && root.cpu_throttling_status != Lang.t("none", Lang.current)) ? 1.5px : 1px;
+                                VerticalLayout {
+                                    padding: Theme.space-md;
+                                    alignment: center;
+                                    spacing: 2px;
+                                    Text { text: Lang.t("cpu_throttling", Lang.current); font-size: 12px; color: Theme.text-muted; horizontal-alignment: center; }
+                                    Text {
+                                        text: root.cpu_throttling_status;
+                                        font-size: 16px;
+                                        font-weight: 700;
+                                        color: Theme.text-main;
+                                        horizontal-alignment: center;
+                                        overflow: elide;
+                                    }
+                                }
+                            }
+    
+                            SurfaceCard {
+                                horizontal-stretch: 1;
+                                border-color: root.gpu_throttling_status == "Yok" || root.gpu_throttling_status == "Hayır" || root.gpu_throttling_status == "None" || root.gpu_throttling_status == "-" || root.gpu_throttling_status == Lang.t("none", Lang.current) ? Theme.border : (root.gpu_throttling_status == "Güç Limiti" || root.gpu_throttling_status == Lang.t("throttling_power", Lang.current) ? Theme.warning : Theme.danger);
+                                border-width: (root.gpu_throttling_status != "Yok" && root.gpu_throttling_status != "Hayır" && root.gpu_throttling_status != "None" && root.gpu_throttling_status != "-" && root.gpu_throttling_status != Lang.t("none", Lang.current)) ? 1.5px : 1px;
+                                VerticalLayout {
+                                    padding: Theme.space-md;
+                                    alignment: center;
+                                    spacing: 2px;
+                                    Text { text: Lang.t("gpu_throttling", Lang.current); font-size: 12px; color: Theme.text-muted; horizontal-alignment: center; }
+                                    Text {
+                                        text: root.gpu_throttling_status;
+                                        font-size: 16px;
+                                        font-weight: 700;
+                                        color: Theme.text-main;
+                                        horizontal-alignment: center;
+                                        overflow: elide;
+                                    }
+                                }
+                            }
+                        }
+    
+                        // Terminal Log Alanı
+                        VerticalLayout {
+                            spacing: Theme.space-sm;
+                            horizontal-stretch: 1;
+                            vertical-stretch: 1;
+    
+                            HorizontalLayout {
+                                spacing: Theme.space-md;
+                                Text {
+                                    text: Lang.t("console_output", Lang.current);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    color: Theme.text-main;
+                                    horizontal-stretch: 1;
+                                    vertical-alignment: center;
+                                    horizontal-alignment: left;
+                                }
+                                HorizontalLayout {
+                                    spacing: Theme.space-sm;
+                                    alignment: end;
+    
+                                    AppButton {
+                                        text: Lang.t("copy_log", Lang.current);
+                                        variant: "secondary";
+                                        button_height: 28px;
+                                        enabled: root.tab1_ready;
+                                        clicked => { root.copy_log_to_clipboard(root.terminal_output); }
+                                    }
+    
+                                    AppButton {
+                                        text: Lang.t("clear_console", Lang.current);
+                                        variant: "secondary";
+                                        button_height: 28px;
+                                        enabled: root.tab1_ready;
+                                        clicked => { root.clear_terminal(); }
+                                    }
+                                }
+                            }
+    
+                            // Terminal Ekran Paneli (Sabit Kutu)
+                            Rectangle {
+                                background: #0b0f14;
+                                border-radius: Theme.radius-sm;
+                                border-width: 1px;
+                                border-color: Theme.border;
+                                horizontal-stretch: 1;
+                                vertical-stretch: 1;
+                                clip: true;
+    
+                                if !root.tab1_ready: SkeletonTerminalLines {}
+    
+                                if root.tab1_ready: ScrollView {
+                                    width: 100%;
+                                    height: 100%;
+    
+                                    VerticalLayout {
+                                        padding: 12px;
+    
+                                        Text {
+                                            text: root.terminal_output != "" ? root.terminal_output : "[BenchHub] " + Lang.t("console_output", Lang.current) + "...";
+                                            font-family: "monospace";
+                                            font-size: 12px;
+                                            color: #d1d5db;
+                                            wrap: word-wrap;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+}

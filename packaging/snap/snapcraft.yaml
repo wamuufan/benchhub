@@ -1,0 +1,22 @@
+name: benchhub
+base: core22
+version: '0.1.0'
+summary: BenchHub Benchmark Manager
+description: A central place for benchmarks.
+grade: stable
+confinement: strict
+
+parts:
+  benchhub:
+    plugin: rust
+    source: .
+    build-packages:
+      - build-essential
+      - libsqlite3-dev
+
+apps:
+  benchhub:
+    command: bin/benchhub
+    plugs:
+      - network
+      - hardware-observe

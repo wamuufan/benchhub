@@ -1,0 +1,95 @@
+# 🦀 Rust & Cargo
+/target/
+**/*.rs.bk
+**/*.d
+*.rlib
+
+# 🔧 Derleme Çıktıları (build.rs tarafından üretilen)
+*.so
+*.dylib
+*.dll
+*.o
+*.a
+
+# 🛠️ BenchHub Local Data & Testing
+/runners/
+/logs/
+/temp/
+/tmp/
+/exports/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+config.json
+
+# 📊 Dışa Aktarılan Test Raporları
+benchhub_history_*.csv
+benchhub_comparison_*.png
+benchhub_comparison_*.svg
+
+# 📋 Log Dosyaları
+*.log
+
+# 📦 İndirilen Arşivler ve Paketler
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+*.zip
+*.7z
+*.run
+*.exe
+*.AppImage
+*.deb
+*.rpm
+
+# ⚙️ Çevre Değişkenleri (Environment)
+.env
+.env.local
+.env.*
+
+# 💻 İşletim Sistemi Dosyaları
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# 📝 IDE ve Editörler (VS Code, JetBrains, Vim vb.)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+*.rej
+*.patch
+*.diff
+
+# 🐍 Python / Yardımcı Betik Kalıntıları
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+scripts/legacy/
+
+# 📊 Profiling ve Debugging
+callgrind.out.*
+perf.data
+perf.data.old
+*.profraw
+*.profdata
+core
+core.*
+vgcore.*

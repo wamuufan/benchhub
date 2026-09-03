@@ -1,0 +1,71 @@
+Primate Labs Inc.
+End User License Agreement (EULA)
+=================================
+Software: Geekbench
+Website: https://www.geekbench.com/
+Copyright (C) 2006-2025 Primate Labs Inc. All rights reserved.
+
+IMPORTANT - READ CAREFULLY:
+This End User License Agreement ("EULA") is a legal agreement between you (either an
+individual or a single legal entity) and Primate Labs Inc. ("Primate Labs") for the
+Geekbench software product, which includes computer software and associated media,
+workload definitions, algorithms, and electronic documentation ("Software").
+
+BY DOWNLOADING, INSTALLING, COPYING, OR OTHERWISE USING THE SOFTWARE, YOU AGREE TO BE
+BOUND BY THE TERMS OF THIS EULA. IF YOU DO NOT AGREE TO THE TERMS OF THIS EULA, DO NOT
+INSTALL, COPY, OR USE THE SOFTWARE.
+
+1. GRANT OF LICENSE
+Subject to the terms and conditions of this EULA, Primate Labs grants you a limited,
+non-exclusive, non-transferable, revocable license to install and use the Software on
+devices that you own or control, solely for hardware evaluation and benchmarking purposes.
+
+1.1 Evaluation / Free Mode:
+If the Software is used without entering a paid license key, it operates in evaluation
+mode. In this mode, benchmark results are automatically uploaded to and displayed on the
+Geekbench Browser (https://browser.geekbench.com/). All results submitted to the Geekbench
+Browser are public and subject to the Primate Labs Privacy Policy and Terms of Use.
+The evaluation version may NOT be used for commercial hardware validation, commercial
+benchmarking services, or corporate product certification without a Geekbench Pro license.
+
+1.2 Commercial / Pro License:
+Use of the Software for commercial purposes, including hardware manufacturing qualification,
+commercial review publications, or automated enterprise hardware testing, requires the
+purchase of an appropriate Geekbench Pro or Corporate license from Primate Labs.
+
+2. RESTRICTIONS
+You agree not to, and you will not permit others to:
+(a) Decompile, reverse engineer, disassemble, decrypt, or attempt to derive the source code
+    or underlying algorithms of the Software;
+(b) Modify, adapt, translate, enhance, or create derivative works from the Software;
+(c) Rent, lease, lend, sell, sublicense, distribute, or transfer the Software to any third party;
+(d) Make the Software available over a network for automated remote execution or multi-device
+    simultaneous use without prior written authorization from Primate Labs;
+(e) Alter, disable, or circumvent any security, license key verification, or result submission
+    mechanisms within the Software;
+(f) Remove, alter, or obscure any proprietary notice (including copyright and trademark notices)
+    of Primate Labs Inc.
+
+3. INTELLECTUAL PROPERTY RIGHTS
+The Software is licensed, not sold. All title, ownership rights, and intellectual property rights
+in and to the Software, including but not limited to code, textures, icons, scoring models, and
+workload profiles, are owned exclusively by Primate Labs Inc. Geekbench and the Geekbench logo
+are registered trademarks of Primate Labs Inc.
+
+4. TERMINATION
+This Agreement is effective until terminated. Your rights under this EULA will terminate
+automatically without notice from Primate Labs if you fail to comply with any term(s) of this
+agreement. Upon termination, you must cease all use of the Software and destroy all copies
+of the Software in your possession.
+
+5. DISCLAIMER OF WARRANTIES
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITH ALL FAULTS AND WITHOUT WARRANTY OF
+ANY KIND. PRIMATE LABS EXPRESSLY DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, STATUTORY
+OR OTHERWISE, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+6. LIMITATION OF LIABILITY
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL PRIMATE LABS INC. BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES (INCLUDING
+BUT NOT LIMITED TO LOSS OF DATA, SYSTEM INSTABILITY, OR HARDWARE STRESS DAMAGE) ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR INABILITY TO USE THE SOFTWARE.

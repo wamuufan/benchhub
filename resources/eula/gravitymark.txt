@@ -1,0 +1,34 @@
+Tellusim Technologies Inc. GravityMark End User License Agreement (EULA)
+========================================================================
+
+GravityMark Copyright (C) 2020-2024 Tellusim Technologies Inc.
+Website: https://tellusim.com/gravitymark/
+
+IMPORTANT: READ THIS AGREEMENT CAREFULLY BEFORE DOWNLOADING, INSTALLING, OR USING
+TELLUSIM GRAVITYMARK GPU BENCHMARK SOFTWARE.
+
+1. LICENSE GRANT:
+Tellusim Technologies Inc. ("Tellusim") grants you a non-exclusive, non-transferable,
+royalty-free license to download, install, and execute GravityMark for personal,
+evaluation, academic, and non-commercial GPU stress-testing and benchmarking purposes.
+
+2. COMMERCIAL USE:
+Any commercial use, including hardware manufacturing qualification, vendor benchmarking,
+or incorporation into commercial benchmarking suites, requires a separate commercial
+license agreement with Tellusim Technologies Inc.
+
+3. PROPRIETARY RIGHTS & RESTRICTIONS:
+- GravityMark, its 3D engine, shaders, textures, assets, and documentation are proprietary
+  works of Tellusim Technologies Inc. and protected by international copyright laws.
+- You shall NOT modify, reverse engineer, decompile, or disassemble GravityMark binaries.
+- You shall NOT bypass, disable, or alter any benchmark scoring, watermark, or timing routines.
+- You shall NOT redistribute the installer without preserving all original Tellusim copyright
+  and trademark notices.
+
+4. DISCLAIMER OF WARRANTY:
+GRAVITYMARK IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. TELLUSIM DISCLAIMS ALL
+WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND ACCURACY OF GRAPHICS HARDWARE READINGS.
+IN NO EVENT SHALL TELLUSIM BE LIABLE FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR
+CONSEQUENTIAL DAMAGES (INCLUDING HARDWARE FAILURE, THERMAL SHUTDOWN, OR DATA LOSS)
+RESULTING FROM THE OPERATION OF GRAVITYMARK.

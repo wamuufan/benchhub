@@ -1,0 +1,476 @@
+import { TabWidget, ListView, Button, ComboBox, ScrollView, LineEdit, CheckBox } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { AppButton } from "app_button.slint";
+import { StatusBadge } from "status_badge.slint";
+import { SurfaceCard } from "surface_card.slint";
+import { SettingRow } from "setting_row.slint";
+import { SkeletonBlock, SkeletonSettingRow, SkeletonStorageRow, SkeletonRunnerRow, SkeletonTerminalLines } from "skeleton.slint";
+import { Lang, BenchmarkItem, HistoryItem, CompareRunColumn } from "../types.slint";
+
+export component SettingsTab inherits ScrollView {
+    callback change_terminal_limit(string);
+    in-out property <bool> tab3_ready;
+    callback change_save_stopped_runs(string);
+    in-out property <[string]> save_stopped_options;
+    in-out property <int> selected_save_stopped_index;
+    in-out property <string> sensor_diagnosis_text;
+    callback change_max_test_duration(string);
+    in-out property <string> data_dir_path;
+    callback change_telemetry_interval(string);
+    in-out property <[string]> telemetry_intervals;
+    in-out property <[string]> max_duration_options;
+    in-out property <int> active_tab;
+    in-out property <string> logs_dir_path;
+    in-out property <[string]> available_languages;
+    callback open_data_dir();
+    callback change_language(string);
+    in-out property <bool> is_benchmark_running;
+    in-out property <int> selected_max_duration_index;
+    callback open_logs_dir();
+    in-out property <int> selected_terminal_limit_index;
+    in-out property <[string]> terminal_limits;
+    in-out property <int> selected_telemetry_interval_index;
+    in-out property <int> selected_language_index;
+    callback request_clean_all_runners();
+    callback request_clear_history();
+    in-out property <string> runners_size_text;
+
+    ScrollView {
+                    visible: root.active_tab == 3;
+                    VerticalLayout {
+                        spacing: Theme.space-lg;
+    
+                        if !root.tab3_ready: VerticalLayout {
+                            spacing: Theme.space-lg;
+    
+                            // BÖLÜM 1: DİL AYARLARI SKELETON
+                            VerticalLayout {
+                                spacing: Theme.space-sm;
+                                HorizontalLayout { alignment: start; SkeletonBlock { width: 130px; height: 14px; } }
+                                SurfaceCard {
+                                    width: 100%;
+                                    VerticalLayout {
+                                        padding: Theme.space-md;
+                                        spacing: Theme.space-md;
+                                        SkeletonSettingRow { title_width: 110px; desc_width: 260px; control_width: 280px; }
+                                    }
+                                }
+                            }
+    
+                            // BÖLÜM 2: DEPOLAMA VE DİZİNLER SKELETON
+                            VerticalLayout {
+                                spacing: Theme.space-sm;
+                                HorizontalLayout { alignment: start; SkeletonBlock { width: 190px; height: 14px; } }
+                                SurfaceCard {
+                                    width: 100%;
+                                    VerticalLayout {
+                                        padding: Theme.space-md;
+                                        spacing: Theme.space-md;
+                                        SkeletonStorageRow { title_width: 150px; desc_width: 260px; }
+                                        Rectangle { height: 1px; background: Theme.border; }
+                                        SkeletonStorageRow { title_width: 150px; desc_width: 260px; }
+                                        Rectangle { height: 1px; background: Theme.border; }
+                                        SkeletonRunnerRow {}
+                                    }
+                                }
+                            }
+    
+                            // BÖLÜM 3: PERFORMANS VE TELEMETRİ SKELETON
+                            VerticalLayout {
+                                spacing: Theme.space-sm;
+                                HorizontalLayout { alignment: start; SkeletonBlock { width: 200px; height: 14px; } }
+                                SurfaceCard {
+                                    width: 100%;
+                                    VerticalLayout {
+                                        padding: Theme.space-md;
+                                        spacing: Theme.space-md;
+                                        SkeletonSettingRow { title_width: 180px; desc_width: 280px; control_width: 280px; }
+                                        Rectangle { height: 1px; background: Theme.border; }
+                                        SkeletonSettingRow { title_width: 170px; desc_width: 260px; control_width: 280px; }
+                                        Rectangle { height: 1px; background: Theme.border; }
+                                        SkeletonSettingRow { title_width: 180px; desc_width: 270px; control_width: 280px; }
+                                        Rectangle { height: 1px; background: Theme.border; }
+                                        SkeletonSettingRow { title_width: 200px; desc_width: 290px; control_width: 280px; }
+                                    }
+                                }
+                            }
+    
+                            // BÖLÜM 4: DONANIM VE BAKIM SKELETON
+                            VerticalLayout {
+                                spacing: Theme.space-sm;
+                                HorizontalLayout { alignment: start; SkeletonBlock { width: 170px; height: 14px; } }
+                                SurfaceCard {
+                                    width: 100%;
+                                    VerticalLayout {
+                                        padding: Theme.space-md;
+                                        spacing: Theme.space-md;
+                                        SkeletonSettingRow { title_width: 160px; desc_width: 270px; control_width: 280px; }
+                                        Rectangle { height: 1px; background: Theme.border; }
+                                        SkeletonSettingRow { title_width: 150px; desc_width: 250px; control_width: 140px; }
+                                    }
+                                }
+                            }
+                        }
+    
+                        if root.tab3_ready: VerticalLayout {
+                            spacing: Theme.space-lg;
+    
+                            // ------------------------------------------
+                            // BÖLÜM 1: DİL AYARLARI
+                            // ------------------------------------------
+                            VerticalLayout {
+                                spacing: Theme.space-sm;
+    
+                                Text {
+                                    text: Lang.t("sec_language", Lang.current);
+                                    font-size: 14px;
+                                    font-weight: 700;
+                                    color: Theme.text-main;
+                                    horizontal-alignment: left;
+                                }
+    
+                                SurfaceCard {
+                                    width: 100%;
+                                    VerticalLayout {
+                                        padding: Theme.space-md;
+                                        spacing: Theme.space-md;
+    
+                                        SettingRow {
+                                            title: Lang.t("language_title", Lang.current);
+                                            description: Lang.t("language_desc", Lang.current);
+    
+                                            ComboBox {
+                                                width: 280px;
+                                                height: 32px;
+                                                model: root.available_languages;
+                                                current-index <=> root.selected_language_index;
+                                                selected(val) => { root.change_language(val); }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+    
+                            // ------------------------------------------
+                            // BÖLÜM 2: DEPOLAMA VE DİZİNLER
+                            // ------------------------------------------
+                            VerticalLayout {
+                                spacing: Theme.space-sm;
+    
+                                Text {
+                                    text: Lang.t("sec_storage", Lang.current);
+                                    font-size: 14px;
+                                    font-weight: 700;
+                                    color: Theme.text-main;
+                                    horizontal-alignment: left;
+                                }
+    
+                                SurfaceCard {
+                                    width: 100%;
+                                    VerticalLayout {
+                                        padding: Theme.space-md;
+                                        spacing: Theme.space-md;
+    
+                                        // Satır 1: Veri Depolama Dizini
+                                        SettingRow {
+                                            title: Lang.t("data_dir_title", Lang.current);
+                                            description: Lang.t("data_dir_desc", Lang.current);
+    
+                                            HorizontalLayout {
+                                                spacing: Theme.space-sm;
+    
+                                                Rectangle {
+                                                    horizontal-stretch: 1;
+                                                    background: Theme.bg-dark;
+                                                    border-radius: Theme.radius-sm;
+                                                    border-width: 1px;
+                                                    border-color: Theme.border;
+                                                    height: 32px;
+    
+                                                    HorizontalLayout {
+                                                        padding-left: Theme.space-sm;
+                                                        padding-right: Theme.space-sm;
+                                                        alignment: center;
+                                                        Text {
+                                                            text: root.data_dir_path;
+                                                            font-size: 11px;
+                                                            color: Theme.text-muted;
+                                                            overflow: elide;
+                                                            vertical-alignment: center;
+                                                        }
+                                                    }
+                                                }
+    
+                                                AppButton {
+                                                    text: Lang.t("open_dir_btn", Lang.current);
+                                                    variant: "secondary";
+                                                    button_height: 32px;
+                                                    padding_x: 10px;
+                                                    clicked => { root.open_data_dir(); }
+                                                }
+                                            }
+                                        }
+    
+                                        // Divider
+                                        Rectangle { height: 1px; background: Theme.border; }
+    
+                                        // Satır 2: Log Dosyaları Dizini
+                                        SettingRow {
+                                            title: Lang.t("logs_dir_title", Lang.current);
+                                            description: Lang.t("logs_dir_desc", Lang.current);
+    
+                                            HorizontalLayout {
+                                                spacing: Theme.space-sm;
+    
+                                                Rectangle {
+                                                    horizontal-stretch: 1;
+                                                    background: Theme.bg-dark;
+                                                    border-radius: Theme.radius-sm;
+                                                    border-width: 1px;
+                                                    border-color: Theme.border;
+                                                    height: 32px;
+    
+                                                    HorizontalLayout {
+                                                        padding-left: Theme.space-sm;
+                                                        padding-right: Theme.space-sm;
+                                                        alignment: center;
+                                                        Text {
+                                                            text: root.logs_dir_path;
+                                                            font-size: 11px;
+                                                            color: Theme.text-muted;
+                                                            overflow: elide;
+                                                            vertical-alignment: center;
+                                                        }
+                                                    }
+                                                }
+    
+                                                AppButton {
+                                                    text: Lang.t("open_dir_btn", Lang.current);
+                                                    variant: "secondary";
+                                                    button_height: 32px;
+                                                    padding_x: 10px;
+                                                    clicked => { root.open_logs_dir(); }
+                                                }
+                                            }
+                                        }
+    
+                                        // Divider
+                                        Rectangle { height: 1px; background: Theme.border; }
+    
+                                        // Satır 3: İndirilmiş Benchmark Paketleri
+                                        SettingRow {
+                                            title: Lang.t("runners_title", Lang.current);
+                                            description: Lang.t("runners_desc", Lang.current);
+    
+                                            HorizontalLayout {
+                                                spacing: Theme.space-sm;
+    
+                                                Rectangle {
+                                                    background: Theme.bg-dark;
+                                                    border-radius: Theme.radius-sm;
+                                                    border-width: 1px;
+                                                    border-color: Theme.border;
+                                                    height: 32px;
+                                                    width: 85px;
+    
+                                                    HorizontalLayout {
+                                                        padding-left: Theme.space-sm;
+                                                        padding-right: Theme.space-sm;
+                                                        alignment: center;
+                                                        Text {
+                                                            text: root.runners_size_text;
+                                                            font-size: 12px;
+                                                            font-weight: 600;
+                                                            color: Theme.text-main;
+                                                            vertical-alignment: center;
+                                                            horizontal-alignment: center;
+                                                        }
+                                                    }
+                                                }
+    
+                                                AppButton {
+                                                    horizontal-stretch: 1;
+                                                    text: Lang.t("clean_runners_btn", Lang.current);
+                                                    variant: "danger";
+                                                    button_height: 32px;
+                                                    padding_x: 10px;
+                                                    enabled: !root.is_benchmark_running;
+                                                    clicked => { root.request_clean_all_runners(); }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+    
+                            // ------------------------------------------
+                            // BÖLÜM 3: PERFORMANS VE TELEMETRİ
+                            // ------------------------------------------
+                            VerticalLayout {
+                                spacing: Theme.space-sm;
+    
+                                Text {
+                                    text: Lang.t("sec_performance", Lang.current);
+                                    font-size: 14px;
+                                    font-weight: 700;
+                                    color: Theme.text-main;
+                                    horizontal-alignment: left;
+                                }
+    
+                                SurfaceCard {
+                                    width: 100%;
+                                    VerticalLayout {
+                                        padding: Theme.space-md;
+                                        spacing: Theme.space-md;
+    
+                                        // Satır 4: Telemetri Yenileme Sıklığı
+                                        SettingRow {
+                                            title: Lang.t("interval_title", Lang.current);
+                                            description: Lang.t("interval_desc", Lang.current);
+    
+                                            ComboBox {
+                                                width: 280px;
+                                                height: 32px;
+                                                model: root.telemetry_intervals;
+                                                current-index <=> root.selected_telemetry_interval_index;
+                                                selected(val) => { root.change_telemetry_interval(val); }
+                                            }
+                                        }
+    
+                                        // Divider
+                                        Rectangle { height: 1px; background: Theme.border; }
+    
+                                        // Satır 5: Konsol Satır Arabelleği
+                                        SettingRow {
+                                            title: Lang.t("limit_title", Lang.current);
+                                            description: Lang.t("limit_desc", Lang.current);
+    
+                                            ComboBox {
+                                                width: 280px;
+                                                height: 32px;
+                                                model: root.terminal_limits;
+                                                current-index <=> root.selected_terminal_limit_index;
+                                                selected(val) => { root.change_terminal_limit(val); }
+                                            }
+                                        }
+    
+                                        // Divider
+                                        Rectangle { height: 1px; background: Theme.border; }
+    
+                                        // Satır 6: İptal Edilen Testlerin Kaydı
+                                        SettingRow {
+                                            title: Lang.t("save_stopped_title", Lang.current);
+                                            description: Lang.t("save_stopped_desc", Lang.current);
+    
+                                            ComboBox {
+                                                width: 280px;
+                                                height: 32px;
+                                                model: root.save_stopped_options;
+                                                current-index <=> root.selected_save_stopped_index;
+                                                selected(val) => { root.change_save_stopped_runs(val); }
+                                            }
+                                        }
+    
+                                        // Divider
+                                        Rectangle { height: 1px; background: Theme.border; }
+    
+                                        // Satır 7: Maksimum Test Süresi Limiti
+                                        SettingRow {
+                                            title: Lang.t("max_duration_title", Lang.current);
+                                            description: Lang.t("max_duration_desc", Lang.current);
+    
+                                            ComboBox {
+                                                width: 280px;
+                                                height: 32px;
+                                                model: root.max_duration_options;
+                                                current-index <=> root.selected_max_duration_index;
+                                                selected(val) => { root.change_max_test_duration(val); }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+    
+                            // ------------------------------------------
+                            // BÖLÜM 4: DONANIM VE BAKIM
+                            // ------------------------------------------
+                            VerticalLayout {
+                                spacing: Theme.space-sm;
+    
+                                Text {
+                                    text: Lang.t("sec_hardware", Lang.current);
+                                    font-size: 14px;
+                                    font-weight: 700;
+                                    color: Theme.text-main;
+                                    horizontal-alignment: left;
+                                }
+    
+                                SurfaceCard {
+                                    width: 100%;
+                                    VerticalLayout {
+                                        padding: Theme.space-md;
+                                        spacing: Theme.space-md;
+    
+                                        // Satır 7: Donanım Sensör Durumu
+                                        SettingRow {
+                                            title: Lang.t("sensors_title", Lang.current);
+                                            description: Lang.t("sensors_desc", Lang.current);
+    
+                                            Rectangle {
+                                                background: Theme.bg-dark;
+                                                border-radius: Theme.radius-sm;
+                                                border-width: 1px;
+                                                border-color: Theme.border;
+                                                height: 32px;
+                                                width: 280px;
+    
+                                                HorizontalLayout {
+                                                    padding-left: Theme.space-sm;
+                                                    padding-right: Theme.space-sm;
+                                                    alignment: start;
+                                                    spacing: 6px;
+    
+                                                    VerticalLayout {
+                                                        alignment: center;
+                                                        Rectangle {
+                                                            width: 6px;
+                                                            height: 6px;
+                                                            border-radius: 3px;
+                                                            background: Theme.success;
+                                                        }
+                                                    }
+    
+                                                    Text {
+                                                        text: root.sensor_diagnosis_text;
+                                                        font-size: 11px;
+                                                        color: Theme.success;
+                                                        overflow: elide;
+                                                        vertical-alignment: center;
+                                                    }
+                                                }
+                                            }
+                                        }
+    
+                                        // Divider
+                                        Rectangle { height: 1px; background: Theme.border; }
+    
+                                        // Satır 8: Test Geçmişini Sıfırla
+                                        SettingRow {
+                                            title: Lang.t("clear_history_title", Lang.current);
+                                            description: Lang.t("clear_history_desc", Lang.current);
+    
+                                            AppButton {
+                                                text: Lang.t("clear_history_btn", Lang.current);
+                                                variant: "danger";
+                                                button_height: 32px;
+                                                enabled: !root.is_benchmark_running;
+                                                clicked => { root.request_clear_history(); }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        }
+                    }
+}

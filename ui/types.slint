@@ -1,0 +1,92 @@
+export struct BenchmarkItem {
+    id: string,
+    name: string,
+    category: string,
+    download_size: string,
+    description: string,
+    installed: bool,
+    running: bool,
+    has_versions: bool,
+    versions: [string],
+    selected_version: string,
+    selected_version_index: int,
+    display_version: string,
+}
+
+export struct HistoryItem {
+    id: int,
+    benchmark_id: string,
+    category: string,
+    preset_or_version: string,
+    gpu_mode: string,
+    score: string,
+    status: string,
+    duration: string,
+    date: string,
+    cpu_avg_line: string,
+    cpu_peak_line: string,
+    gpu_avg_line: string,
+    gpu_peak_line: string,
+    power_ram_avg_line: string,
+    power_ram_peak_line: string,
+    avg_cpu_usage: string,
+    peak_cpu_usage: string,
+    avg_cpu_temp: string,
+    peak_cpu_temp: string,
+    avg_cpu_freq_mhz: string,
+    peak_cpu_freq_mhz: string,
+    avg_gpu_usage: string,
+    peak_gpu_usage: string,
+    avg_gpu_temp: string,
+    peak_gpu_temp: string,
+    avg_power_w: string,
+    peak_power_w: string,
+    avg_ram_gb: string,
+    peak_ram_gb: string,
+    system_info_summary: string,
+    log_path: string,
+    selected: bool,
+}
+
+export struct CompareRunColumn {
+    id: int,
+    title: string,
+    preset: string,
+    gpu_mode: string,
+    power_profile: string,
+    score: string,
+    status: string,
+    duration: string,
+    date: string,
+    system_info: string,
+
+    // CPU
+    cpu_usage: string,
+    cpu_temp: string,
+    cpu_freq: string,
+    cpu_power: string,
+    cpu_throttling: string,
+    has_cpu_throttling: bool,
+
+    // GPU
+    gpu_usage: string,
+    gpu_temp: string,
+    gpu_freq: string,
+    vram_freq: string,
+    gpu_power: string,
+    gpu_throttling: string,
+    has_gpu_throttling: bool,
+
+    // Memory
+    ram: string,
+    vram: string,
+
+    // AC Power
+    ac_power: string,
+}
+
+export global Lang {
+    in property <string> current: "tr";
+    pure callback t(string, string) -> string;
+}
+

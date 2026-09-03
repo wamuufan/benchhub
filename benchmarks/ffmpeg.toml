@@ -1,0 +1,29 @@
+id = "ffmpeg"
+name = "FFmpeg Video Kodlama"
+category = "İşlemci (Render)"
+download_size = "~40 MB"
+description = "H.264, H.265 ve AV1 çok kanallı video dönüştürme ve kodlama işlemci testidir."
+default_version = "Latest Release"
+score_regex = "fps=\\s*([\\d\\.]+)"
+score_unit = "fps"
+run_cmd = "./ffmpeg"
+run_args = ["-y", "-f", "lavfi", "-i", "testsrc2=duration=15:size=1920x1080:rate=60", "-c:v", "libx264", "-preset", "medium", "-crf", "23", "-f", "null", "-"]
+download_cmd = "wget -nv -c https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz && tar -xvf ffmpeg-release-amd64-static.tar.xz --strip-components=1 && rm -f ffmpeg-release-amd64-static.tar.xz && chmod +x ffmpeg"
+
+[[versions]]
+version = "Latest Release"
+download_size = "~40 MB"
+download_cmd = "wget -nv -c https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz && tar -xvf ffmpeg-release-amd64-static.tar.xz --strip-components=1 && rm -f ffmpeg-release-amd64-static.tar.xz && chmod +x ffmpeg"
+run_cmd = "./ffmpeg"
+run_args = ["-y", "-f", "lavfi", "-i", "testsrc2=duration=15:size=1920x1080:rate=60", "-c:v", "libx264", "-preset", "medium", "-crf", "23", "-f", "null", "-"]
+score_regex = "fps=\\s*([\\d\\.]+)"
+score_unit = "fps"
+
+[[versions]]
+version = "LTS (6.1)"
+download_size = "~40 MB"
+download_cmd = "wget -nv -c https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz && tar -xvf ffmpeg-release-amd64-static.tar.xz --strip-components=1 && rm -f ffmpeg-release-amd64-static.tar.xz && chmod +x ffmpeg"
+run_cmd = "./ffmpeg"
+run_args = ["-y", "-f", "lavfi", "-i", "testsrc2=duration=15:size=1920x1080:rate=60", "-c:v", "libx264", "-preset", "medium", "-crf", "23", "-f", "null", "-"]
+score_regex = "fps=\\s*([\\d\\.]+)"
+score_unit = "fps"
