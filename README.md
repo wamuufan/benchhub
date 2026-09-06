@@ -25,7 +25,18 @@ The names of third-party software, companies, and products mentioned in this sof
 
 ## Installation and Usage
 
+For complete system prerequisites, required packages, and detailed setup instructions on Ubuntu/Debian, please see the **[Installation Guide](INSTALLATION.md)**.
+
+### Quick Start
+
+```bash
+./run.sh
+```
+
+Or build and run manually:
+
 ```bash
 cargo build --release
 ./target/release/benchhub
 ```
+
