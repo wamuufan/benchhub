@@ -2,7 +2,6 @@ slint::include_modules!();
 
 pub mod callbacks;
 pub mod commands;
-pub mod service;
 pub mod state;
 pub mod ui;
 
@@ -53,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let service = Arc::new(crate::service::BenchHubService::new(
+    let service = Arc::new(benchhub::service::BenchHubService::new(
         db,
         engine,
         profiles.clone(),
@@ -72,6 +71,7 @@ async fn main() -> anyhow::Result<()> {
         status: benchhub::i18n::t("status_all"),
         sort_order: HistorySortOrder::DateDesc,
         selected_ids: Vec::new(),
+        expanded_methodology_ids: std::collections::HashSet::new(),
     }));
 
     let active_cancel_tx = Arc::new(tokio::sync::Mutex::new(None));

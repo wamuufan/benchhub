@@ -796,6 +796,58 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
         }
     });
 
+    // Callback: Create Methodology
+    let history_filter_create_meth = history_filter_state.clone();
+    let db_create_meth = db.clone();
+    let app_state_create_meth = app_state.clone();
+    let ui_weak_create_meth = ui.as_weak();
+    ui.on_create_methodology(move || {
+        let mut filter = history_filter_create_meth.lock().unwrap_or_else(|e| e.into_inner());
+        let count = filter.selected_ids.len();
+        if count < 2 {
+            return;
+        }
+        
+        match app_state_create_meth.service.create_methodology(&filter.selected_ids) {
+            Ok(_new_run) => {
+                // Varsayılanda metodolojinin alt testleri gizli (collapsed) kalsın
+                filter.selected_ids.clear();
+                if let Some(ui) = ui_weak_create_meth.upgrade() {
+                    let msg = benchhub::i18n::t("methodology_created_success")
+                        .replace("{}", &count.to_string());
+                    ui.set_status_text(msg.into());
+                    refresh_history_view(&ui, &db_create_meth, &filter);
+                }
+            }
+            Err(e) => {
+                if let Some(ui) = ui_weak_create_meth.upgrade() {
+                    ui.set_status_text(
+                        benchhub::i18n::t("status_error")
+                            .replace("{}", &e.to_string())
+                            .into(),
+                    );
+                }
+            }
+        }
+    });
+
+    // Callback: Toggle Methodology Expand
+    let history_filter_toggle_meth = history_filter_state.clone();
+    let db_toggle_meth = db.clone();
+    let ui_weak_toggle_meth = ui.as_weak();
+    ui.on_toggle_methodology_expand(move |id| {
+        let id_64 = id as i64;
+        let mut filter = history_filter_toggle_meth.lock().unwrap_or_else(|e| e.into_inner());
+        if filter.expanded_methodology_ids.contains(&id_64) {
+            filter.expanded_methodology_ids.remove(&id_64);
+        } else {
+            filter.expanded_methodology_ids.insert(id_64);
+        }
+        if let Some(ui) = ui_weak_toggle_meth.upgrade() {
+            refresh_history_view(&ui, &db_toggle_meth, &filter);
+        }
+    });
+
     // Callback: Open Comparison Modal
     let db_compare = db.clone();
     let history_filter_compare = history_filter_state.clone();
@@ -1167,9 +1219,15 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
                 get_localized_profile_info(&run.benchmark_id, &run.benchmark_id, &run.category, "");
 
             if let Some(ui) = ui_weak_details.upgrade() {
-                ui.set_details_title(
-                    format!("🔍 {}: {}", localized_name, run.preset_or_version).into(),
-                );
+                if run.is_methodology {
+                    ui.set_details_title(
+                        format!("🔍 [METODOLOJİ] {}: {}", localized_name, run.preset_or_version).into(),
+                    );
+                } else {
+                    ui.set_details_title(
+                        format!("🔍 {}: {}", localized_name, run.preset_or_version).into(),
+                    );
+                }
                 ui.set_details_benchmark_name(localized_name.into());
                 ui.set_details_category(localized_cat.into());
                 ui.set_details_preset_version(run.preset_or_version.into());

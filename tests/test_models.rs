@@ -236,6 +236,8 @@ fn test_run_comparison_diff_calculation() {
         system_info_summary: "PC Reference".to_string(),
         power_profile: "Performans (performance)".to_string(),
         log_path: "/tmp/a.log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     };
 
     let run_b = RunResult {
@@ -277,6 +279,8 @@ fn test_run_comparison_diff_calculation() {
         system_info_summary: "PC Overclocked".to_string(),
         power_profile: "Performans (performance)".to_string(),
         log_path: "/tmp/b.log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     };
 
     let diff = RunComparisonDiff::calculate(run_a, run_b);

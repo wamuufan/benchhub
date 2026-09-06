@@ -62,6 +62,9 @@ export component AppWindow inherits Window {
     in-out property <[string]> history_sort_options: ["Tarihe Göre (En Yeni)", "Tarihe Göre (En Eski)", "Skora Göre (Yüksek -> Düşük)", "Skora Göre (Düşük -> Yüksek)", "Süreye Göre (Hızlı -> Yavaş)"];
     in-out property <string> selected_history_sort: "Tarihe Göre (En Yeni)";
     in-out property <string> history_search_query: "";
+    in-out property <bool> can_create_methodology: false;
+    callback create_methodology();
+    callback toggle_methodology_expand(int);
 
     // Language Settings
     in-out property <[string]> available_languages: ["Türkçe", "English"];
@@ -617,6 +620,9 @@ export component AppWindow inherits Window {
     filter_history_status(arg0) => { root.filter_history_status(arg0); }
     tab2_ready <=> root.tab2_ready;
     history <=> root.history;
+    can_create_methodology <=> root.can_create_methodology;
+    create_methodology => { root.create_methodology(); }
+    toggle_methodology_expand(id) => { root.toggle_methodology_expand(id); }
 }
 
             // ==========================================

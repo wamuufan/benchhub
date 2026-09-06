@@ -129,6 +129,8 @@ impl Db {
             ("system_info_summary", "TEXT NOT NULL DEFAULT ''"),
             ("power_profile", "TEXT NOT NULL DEFAULT 'Bilinmiyor'"),
             ("log_path", "TEXT NOT NULL DEFAULT ''"),
+            ("is_methodology", "INTEGER NOT NULL DEFAULT 0"),
+            ("methodology_parent_id", "INTEGER DEFAULT NULL"),
         ];
 
         for (col, def) in run_migrations {
@@ -196,9 +198,10 @@ impl Db {
                 avg_ac_power_w, peak_ac_power_w, avg_ram_gb, peak_ram_gb,
                 avg_vram_gb, peak_vram_gb,
                 cpu_throttling, gpu_throttling,
-                system_info_summary, power_profile, log_path
+                system_info_summary, power_profile, log_path,
+                is_methodology, methodology_parent_id
             )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36, ?37)",
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36, ?37, ?38, ?39)",
             params![
                 run.benchmark_id,
                 run.category,
@@ -237,6 +240,8 @@ impl Db {
                 run.system_info_summary,
                 run.power_profile,
                 run.log_path,
+                run.is_methodology,
+                run.methodology_parent_id,
             ],
         )
         .context("Failed to insert run into database")?;
@@ -281,8 +286,10 @@ impl Db {
                 gpu_throttling = ?32,
                 system_info_summary = ?33,
                 power_profile = ?34,
-                log_path = ?35
-            WHERE id = ?36",
+                log_path = ?35,
+                is_methodology = ?36,
+                methodology_parent_id = ?37
+            WHERE id = ?38",
             params![
                 run.category,
                 run.preset_or_version,
@@ -319,6 +326,8 @@ impl Db {
                 run.system_info_summary,
                 run.power_profile,
                 run.log_path,
+                run.is_methodology,
+                run.methodology_parent_id,
                 run.id,
             ],
         )
@@ -328,6 +337,20 @@ impl Db {
 
     pub fn delete_run(&self, id: i64) -> Result<()> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let mut is_methodology = false;
+        if let Ok(mut stmt) = conn.prepare("SELECT is_methodology FROM runs WHERE id = ?1") {
+            if let Ok(mut rows) = stmt.query(params![id]) {
+                if let Ok(Some(row)) = rows.next() {
+                    is_methodology = row.get::<_, i64>(0).unwrap_or(0) != 0;
+                }
+            }
+        }
+        
+        if is_methodology {
+            conn.execute("UPDATE runs SET methodology_parent_id = NULL WHERE methodology_parent_id = ?1", params![id])
+                .context("Failed to detach children from methodology")?;
+        }
+
         conn.execute(
             "DELETE FROM telemetry_points WHERE run_id = ?1",
             params![id],
@@ -336,6 +359,42 @@ impl Db {
         conn.execute("DELETE FROM runs WHERE id = ?1", params![id])
             .context("Failed to delete run record from database")?;
         Ok(())
+    }
+
+    pub fn create_methodology_record(&self, methodology_run: &RunResult, child_ids: &[i64]) -> Result<i64> {
+        let id = self.insert_run(methodology_run)?;
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        for child_id in child_ids {
+            conn.execute("UPDATE runs SET methodology_parent_id = ?1 WHERE id = ?2", params![id, child_id])
+                .context("Failed to update methodology_parent_id for child")?;
+        }
+        Ok(id)
+    }
+
+    pub fn get_methodology_children(&self, methodology_id: i64) -> Result<Vec<RunResult>> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let mut stmt = conn.prepare(
+            "SELECT
+                id, benchmark_id, category, preset_or_version, gpu_mode, score, status,
+                timestamp, duration_secs, avg_cpu_usage, peak_cpu_usage, avg_cpu_temp, peak_cpu_temp,
+                avg_cpu_freq_mhz, peak_cpu_freq_mhz, avg_gpu_usage, peak_gpu_usage, avg_gpu_temp,
+                peak_gpu_temp, avg_gpu_freq_mhz, peak_gpu_freq_mhz, avg_vram_freq_mhz, peak_vram_freq_mhz,
+                avg_gpu_power_w, peak_gpu_power_w, avg_power_w, peak_power_w,
+                avg_ac_power_w, peak_ac_power_w, avg_ram_gb, peak_ram_gb,
+                avg_vram_gb, peak_vram_gb,
+                cpu_throttling, gpu_throttling,
+                system_info_summary, power_profile, log_path,
+                is_methodology, methodology_parent_id
+            FROM runs
+            WHERE methodology_parent_id = ?1
+            ORDER BY timestamp ASC"
+        )?;
+        let run_iter = stmt.query_map(params![methodology_id], Self::map_row_to_run_result)?;
+        let mut results = Vec::new();
+        for run in run_iter {
+            results.push(run?);
+        }
+        Ok(results)
     }
 
     pub fn get_history(&self) -> Result<Vec<RunResult>> {
@@ -381,6 +440,8 @@ impl Db {
             system_info_summary: row.get(35).unwrap_or_default(),
             power_profile: row.get(36).unwrap_or_else(|_| "Bilinmiyor".to_string()),
             log_path: row.get(37).unwrap_or_default(),
+            is_methodology: row.get::<_, i64>(38).unwrap_or(0) != 0,
+            methodology_parent_id: row.get(39).ok(),
         })
     }
 
@@ -396,7 +457,8 @@ impl Db {
                 avg_ac_power_w, peak_ac_power_w, avg_ram_gb, peak_ram_gb,
                 avg_vram_gb, peak_vram_gb,
                 cpu_throttling, gpu_throttling,
-                system_info_summary, power_profile, log_path
+                system_info_summary, power_profile, log_path,
+                is_methodology, methodology_parent_id
             FROM runs
             WHERE id = ?1",
         )?;
@@ -429,7 +491,8 @@ impl Db {
                 avg_ac_power_w, peak_ac_power_w, avg_ram_gb, peak_ram_gb,
                 avg_vram_gb, peak_vram_gb,
                 cpu_throttling, gpu_throttling,
-                system_info_summary, power_profile, log_path
+                system_info_summary, power_profile, log_path,
+                is_methodology, methodology_parent_id
             FROM runs
             WHERE 1=1"
         );

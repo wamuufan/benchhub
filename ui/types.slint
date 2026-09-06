@@ -46,6 +46,12 @@ export struct HistoryItem {
     system_info_summary: string,
     log_path: string,
     selected: bool,
+    is_methodology: bool,
+    is_child: bool,
+    is_expanded: bool,
+    has_children: bool,
+    child_count: int,
+    depth: int,
 }
 
 export struct CompareRunColumn {

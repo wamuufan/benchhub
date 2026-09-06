@@ -7,7 +7,16 @@ use chrono::DateTime;
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::rc::Rc;
 
-pub fn format_history_item(run: &RunResult, is_selected: bool) -> HistoryItem {
+pub fn format_history_item(
+    run: &RunResult,
+    is_selected: bool,
+    is_methodology: bool,
+    is_child: bool,
+    is_expanded: bool,
+    has_children: bool,
+    child_count: usize,
+    depth: i32,
+) -> HistoryItem {
     let date_str = DateTime::from_timestamp(run.timestamp, 0)
         .map(|dt| dt.format("%m-%d %H:%M").to_string())
         .unwrap_or_else(|| "-".to_string());
@@ -147,11 +156,17 @@ pub fn format_history_item(run: &RunResult, is_selected: bool) -> HistoryItem {
         run.status.clone()
     };
 
+    let preset_display = if run.is_methodology {
+        String::new()
+    } else {
+        run.preset_or_version.clone()
+    };
+
     HistoryItem {
         id: run.id as i32,
         benchmark_id: localized_name.into(),
         category: localized_cat.into(),
-        preset_or_version: run.preset_or_version.clone().into(),
+        preset_or_version: preset_display.into(),
         gpu_mode: gpu_mode_display.into(),
         score: score_str.into(),
         status: status_display.into(),
@@ -180,10 +195,39 @@ pub fn format_history_item(run: &RunResult, is_selected: bool) -> HistoryItem {
         system_info_summary: run.system_info_summary.clone().into(),
         log_path: run.log_path.clone().into(),
         selected: is_selected,
+        is_methodology,
+        is_child,
+        is_expanded,
+        has_children,
+        child_count: child_count as i32,
+        depth,
     }
 }
 
 pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState) {
+    let mut can_create = false;
+    if filter.selected_ids.len() >= 2 {
+        let mut first_bench_id = None;
+        can_create = true;
+        for &id in &filter.selected_ids {
+            if let Ok(Some(r)) = db.get_run_by_id(id) {
+                if r.is_methodology { can_create = false; break; }
+                if let Some(ref f_id) = first_bench_id {
+                    if *f_id != r.benchmark_id {
+                        can_create = false;
+                        break;
+                    }
+                } else {
+                    first_bench_id = Some(r.benchmark_id.clone());
+                }
+            } else {
+                can_create = false;
+                break;
+            }
+        }
+    }
+    ui.set_can_create_methodology(can_create);
+
     match db.get_filtered_history(
         &filter.search,
         &filter.category,
@@ -192,10 +236,52 @@ pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState
         filter.sort_order,
     ) {
         Ok(runs) => {
-            let history_items: Vec<HistoryItem> = runs
-                .iter()
-                .map(|r| format_history_item(r, filter.selected_ids.contains(&r.id)))
-                .collect();
+            let mut history_items = Vec::new();
+            for run in &runs {
+                if run.methodology_parent_id.is_some() {
+                    continue;
+                }
+                
+                if run.is_methodology {
+                    let children = db.get_methodology_children(run.id).unwrap_or_default();
+                    let is_expanded = filter.expanded_methodology_ids.contains(&run.id);
+                    history_items.push(format_history_item(
+                        run,
+                        filter.selected_ids.contains(&run.id),
+                        true,
+                        false,
+                        is_expanded,
+                        true,
+                        children.len(),
+                        0,
+                    ));
+                    if is_expanded {
+                        for child in &children {
+                            history_items.push(format_history_item(
+                                child,
+                                filter.selected_ids.contains(&child.id),
+                                false,
+                                true,
+                                false,
+                                false,
+                                0,
+                                1,
+                            ));
+                        }
+                    }
+                } else {
+                    history_items.push(format_history_item(
+                        run,
+                        filter.selected_ids.contains(&run.id),
+                        false,
+                        false,
+                        false,
+                        false,
+                        0,
+                        0,
+                    ));
+                }
+            }
             ui.set_history(ModelRc::from(Rc::new(VecModel::from(history_items))));
             ui.set_selected_history_count(filter.selected_ids.len() as i32);
         }

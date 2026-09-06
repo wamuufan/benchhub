@@ -45,6 +45,8 @@ fn create_mock_run(id: i64, benchmark_id: &str, score: f64, category: &str) -> R
         system_info_summary: "AMD Ryzen 7 5800H • RTX 3060".to_string(),
         power_profile: "Performans (performance)".to_string(),
         log_path: "/tmp/test.log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
         timestamp: 1724700000,
     }
 }
@@ -159,6 +161,8 @@ fn create_sample_run(
         system_info_summary: sys_info.to_string(),
         power_profile: "Performans".to_string(),
         log_path: "/tmp/test,path/with \"quotes\" and\nnewlines.log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     }
 }
 

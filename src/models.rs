@@ -152,7 +152,7 @@ fn default_throttle_str() -> String {
     "Yok".to_string()
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct RunResult {
     pub id: i64,
     pub benchmark_id: String,
@@ -206,6 +206,10 @@ pub struct RunResult {
     pub log_path: String,
     #[serde(default = "default_power_profile_str")]
     pub power_profile: String,
+    #[serde(default)]
+    pub is_methodology: bool,
+    #[serde(default)]
+    pub methodology_parent_id: Option<i64>,
 }
 
 fn default_power_profile_str() -> String {

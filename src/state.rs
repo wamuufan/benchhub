@@ -6,7 +6,7 @@ use tokio::sync::{mpsc, watch, Mutex};
 
 #[derive(Clone)]
 pub struct AppState {
-    pub service: Arc<crate::service::BenchHubService>,
+    pub service: Arc<benchhub::service::BenchHubService>,
     pub data_dir: PathBuf,
     pub logs_dir: PathBuf,
     pub config_path: PathBuf,
@@ -41,4 +41,5 @@ pub struct HistoryFilterState {
     pub status: String,
     pub sort_order: HistorySortOrder,
     pub selected_ids: Vec<i64>,
+    pub expanded_methodology_ids: std::collections::HashSet<i64>,
 }

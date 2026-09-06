@@ -185,7 +185,7 @@ pub fn register_engine_callbacks(ui: &AppWindow, app_state: &AppState) {
                         );
                         ui.set_status_text(benchhub::i18n::t("status_install_success").into());
                     } else if let Some(ref err) = err_msg {
-                        let err_str = benchhub::i18n::t("status_install_error").replace("{}", err);
+                        let err_str = benchhub::i18n::t("status_install_error").replace("{}", err.as_str());
                         ui.set_install_dialog_status(err_str.clone().into());
                         ui.set_status_text(err_str.into());
                     }
@@ -620,6 +620,8 @@ async fn execute_single_benchmark_flow(
         system_info_summary: sys_info.clone(),
         power_profile: power_prof.clone(),
         log_path: log_path_str.clone(),
+        is_methodology: false,
+        methodology_parent_id: None,
     };
 
     if let Ok(inserted_id) = app_state.service.db.insert_run(&run_res) {

@@ -54,6 +54,8 @@ fn test_sqlite_db_operations() {
         system_info_summary: "Intel Core i7 | NVIDIA RTX | Linux 6.8".to_string(),
         power_profile: "Performans (performance)".to_string(),
         log_path: "/tmp/log.txt".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     };
 
     let id1 = db.insert_run(&run1).expect("Failed to insert run");
@@ -187,6 +189,8 @@ fn test_sqlite_schema_migration() {
         system_info_summary: "AMD Ryzen | NVIDIA RTX | Linux 6.8".to_string(),
         power_profile: "Dengeli (balanced)".to_string(),
         log_path: "/tmp/new.log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     };
     db.insert_run(&new_run)
         .expect("insert_run should succeed on migrated DB");
@@ -255,6 +259,8 @@ fn test_sqlite_filtering_and_deletion() {
         system_info_summary: "Intel i7".to_string(),
         power_profile: "Performans (performance)".to_string(),
         log_path: "/tmp/geekbench.log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     };
 
     let run_gpu = RunResult {
@@ -296,6 +302,8 @@ fn test_sqlite_filtering_and_deletion() {
         system_info_summary: "NVIDIA RTX 3070".to_string(),
         power_profile: "Performans (performance)".to_string(),
         log_path: "/tmp/superposition.log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     };
 
     let id_cpu = db.insert_run(&run_cpu).expect("Insert CPU run");
@@ -395,6 +403,8 @@ fn test_sqlite_sorting_orders() {
         system_info_summary: "PC A".to_string(),
         power_profile: "Performans (performance)".to_string(),
         log_path: "/tmp/a.log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     };
 
     let run_b = RunResult {
@@ -436,6 +446,8 @@ fn test_sqlite_sorting_orders() {
         system_info_summary: "PC B".to_string(),
         power_profile: "Performans (performance)".to_string(),
         log_path: "/tmp/b.log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     };
 
     let id_a = db.insert_run(&run_a).unwrap();
@@ -544,6 +556,8 @@ fn test_db_get_run_by_id() {
         system_info_summary: "SysInfo".to_string(),
         power_profile: "Performans (performance)".to_string(),
         log_path: "/tmp/log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     };
 
     let id = db.insert_run(&run).unwrap();
@@ -624,6 +638,8 @@ fn create_mock_run(
         system_info_summary: "Test CPU | Test GPU | Test OS".to_string(),
         power_profile: "Performans".to_string(),
         log_path: "/tmp/test.log".to_string(),
+        is_methodology: false,
+        methodology_parent_id: None,
     }
 }
 
