@@ -768,28 +768,7 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
         if let Some(pos) = filter.selected_ids.iter().position(|&x| x == id_64) {
             filter.selected_ids.remove(pos);
         } else {
-            if let Ok(Some(new_run)) = db_filter_select.get_run_by_id(id_64) {
-                let mut different_category = false;
-                for &sel_id in &filter.selected_ids {
-                    if let Ok(Some(existing_run)) = db_filter_select.get_run_by_id(sel_id) {
-                        if existing_run.category != new_run.category {
-                            different_category = true;
-                            break;
-                        }
-                    }
-                }
-
-                if different_category {
-                    if let Some(ui) = ui_weak_select.upgrade() {
-                        let warn_msg = benchhub::i18n::t("warn_different_categories")
-                            .replace("{}", &new_run.category);
-                        ui.set_status_text(warn_msg.into());
-                    }
-                    return;
-                }
-
-                filter.selected_ids.push(id_64);
-            }
+            filter.selected_ids.push(id_64);
         }
         if let Some(ui) = ui_weak_select.upgrade() {
             refresh_history_view(&ui, &db_filter_select, &filter);
@@ -814,7 +793,7 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
                 filter.selected_ids.clear();
                 if let Some(ui) = ui_weak_create_meth.upgrade() {
                     let msg = benchhub::i18n::t("methodology_created_success")
-                        .replace("{}", &count.to_string());
+                        .replace("{}", &filter.selected_ids.len().to_string());
                     ui.set_status_text(msg.into());
                     refresh_history_view(&ui, &db_create_meth, &filter);
                 }
@@ -865,6 +844,16 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
             }
 
             if runs.len() >= 2 {
+                let first_cat = runs[0].category.clone();
+                if let Some(diff_run) = runs.iter().find(|r| r.category != first_cat) {
+                    if let Some(ui) = ui_weak_compare.upgrade() {
+                        let warn_msg = benchhub::i18n::t("warn_different_categories")
+                            .replace("{}", &diff_run.category);
+                        ui.set_status_text(warn_msg.into());
+                    }
+                    return;
+                }
+
                 if let Some(ui) = ui_weak_compare.upgrade() {
                     let peak_lbl = benchhub::i18n::t("peak_prefix")
                         .trim_end_matches(':')
@@ -1281,4 +1270,144 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
             ui.set_show_details_dialog(false);
         }
     });
+
+    // Callback: Open Group Dialog
+    let ui_weak_open_group = ui.as_weak();
+    let db_open_group = db.clone();
+    ui.on_open_group_dialog(move || {
+        if let Some(ui) = ui_weak_open_group.upgrade() {
+            let default_name = get_next_default_group_name(&db_open_group);
+            ui.set_group_dialog_name(default_name.into());
+            ui.set_show_group_dialog(true);
+        }
+    });
+
+    // Callback: Close Group Dialog
+    let ui_weak_close_group = ui.as_weak();
+    ui.on_close_group_dialog(move || {
+        if let Some(ui) = ui_weak_close_group.upgrade() {
+            ui.set_show_group_dialog(false);
+        }
+    });
+
+    // Callback: Confirm Group Runs
+    let ui_weak_confirm_group = ui.as_weak();
+    let service_confirm_group = app_state.service.clone();
+    let filter_confirm_group = history_filter_state.clone();
+    ui.on_confirm_group_runs(move |group_name| {
+        let mut name = group_name.trim().to_string();
+        if name.is_empty() {
+            name = get_next_default_group_name(&service_confirm_group.db);
+        }
+        let mut filter = filter_confirm_group.lock().unwrap_or_else(|e| e.into_inner());
+        if !filter.selected_ids.is_empty() {
+            let count_str = filter.selected_ids.len().to_string();
+            if let Ok(_) = service_confirm_group.group_runs(&filter.selected_ids, &name) {
+                // Ensure newly created group is expanded by default
+                filter.collapsed_group_names.remove(&name);
+                if let Some(ui) = ui_weak_confirm_group.upgrade() {
+                    let msg = benchhub::i18n::t("group_created_success")
+                        .replacen("{}", &count_str, 1)
+                        .replacen("{}", &name, 1);
+                    ui.set_status_text(msg.into());
+                }
+            }
+            filter.selected_ids.clear();
+        }
+        if let Some(ui) = ui_weak_confirm_group.upgrade() {
+            ui.set_show_group_dialog(false);
+            refresh_history_view(&ui, &service_confirm_group.db, &filter);
+        }
+    });
+
+    // Callback: Ungroup Selected
+    let ui_weak_ungroup = ui.as_weak();
+    let service_ungroup = app_state.service.clone();
+    let filter_ungroup = history_filter_state.clone();
+    ui.on_ungroup_selected(move || {
+        let mut filter = filter_ungroup.lock().unwrap_or_else(|e| e.into_inner());
+        if !filter.selected_ids.is_empty() {
+            if let Ok(_) = service_ungroup.ungroup_runs(&filter.selected_ids) {
+                if let Some(ui) = ui_weak_ungroup.upgrade() {
+                    let msg = benchhub::i18n::t("runs_ungrouped_success");
+                    ui.set_status_text(msg.into());
+                }
+            }
+            filter.selected_ids.clear();
+            if let Some(ui) = ui_weak_ungroup.upgrade() {
+                refresh_history_view(&ui, &service_ungroup.db, &filter);
+            }
+        }
+    });
+
+    // Callback: Toggle Group Expand
+    let ui_weak_toggle_g_exp = ui.as_weak();
+    let filter_toggle_g_exp = history_filter_state.clone();
+    let db_toggle_g_exp = db.clone();
+    ui.on_toggle_group_expand(move |group_name| {
+        let mut filter = filter_toggle_g_exp.lock().unwrap_or_else(|e| e.into_inner());
+        let name = group_name.to_string();
+        if filter.collapsed_group_names.contains(&name) {
+            filter.collapsed_group_names.remove(&name);
+        } else {
+            filter.collapsed_group_names.insert(name);
+        }
+        if let Some(ui) = ui_weak_toggle_g_exp.upgrade() {
+            refresh_history_view(&ui, &db_toggle_g_exp, &filter);
+        }
+    });
+
+    // Callback: Delete Group
+    let ui_weak_del_group = ui.as_weak();
+    let service_del_group = app_state.service.clone();
+    let filter_del_group = history_filter_state.clone();
+    ui.on_delete_group(move |group_name| {
+        let name = group_name.to_string();
+        if let Ok(_) = service_del_group.delete_group(&name) {
+            if let Some(ui) = ui_weak_del_group.upgrade() {
+                let msg = benchhub::i18n::t("group_deleted_success")
+                    .replace("{}", &name);
+                ui.set_status_text(msg.into());
+            }
+        }
+        let mut filter = filter_del_group.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(g) = &filter.selected_group {
+            if g == &name {
+                filter.selected_group = None;
+            }
+        }
+        if let Some(ui) = ui_weak_del_group.upgrade() {
+            refresh_history_view(&ui, &service_del_group.db, &filter);
+        }
+    });
+
+    // Callback: Filter History Group
+    let ui_weak_filter_group = ui.as_weak();
+    let filter_group = history_filter_state.clone();
+    let db_filter_group = db.clone();
+    ui.on_filter_history_group(move |group_name| {
+        let mut filter = filter_group.lock().unwrap_or_else(|e| e.into_inner());
+        let name = group_name.to_string();
+        if name == benchhub::i18n::t("group_filter_all") {
+            filter.selected_group = None;
+        } else if name == benchhub::i18n::t("group_filter_ungrouped") {
+            filter.selected_group = Some("".to_string());
+        } else {
+            filter.selected_group = Some(name);
+        }
+        if let Some(ui) = ui_weak_filter_group.upgrade() {
+            refresh_history_view(&ui, &db_filter_group, &filter);
+        }
+    });
+}
+
+fn get_next_default_group_name(db: &benchhub::db::Db) -> String {
+    let existing = db.get_distinct_groups().unwrap_or_default();
+    for i in 1..=999 {
+        let candidate = format!("grup-{:02}", i);
+        if !existing.contains(&candidate) {
+            return candidate;
+        }
+    }
+    "grup-01".to_string()
 }

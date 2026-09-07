@@ -72,6 +72,8 @@ async fn main() -> anyhow::Result<()> {
         sort_order: HistorySortOrder::DateDesc,
         selected_ids: Vec::new(),
         expanded_methodology_ids: std::collections::HashSet::new(),
+        selected_group: None,
+        collapsed_group_names: std::collections::HashSet::new(),
     }));
 
     let active_cancel_tx = Arc::new(tokio::sync::Mutex::new(None));

@@ -34,6 +34,14 @@ export component HistoryTab inherits VerticalLayout {
     in-out property <bool> can_create_methodology: false;
     callback create_methodology();
     callback toggle_methodology_expand(int);
+    in-out property <bool> has_grouped_selection: false;
+    in-out property <[string]> history_groups: ["Grup: Tümü"];
+    in-out property <string> selected_history_group: "Grup: Tümü";
+    callback open_group_dialog();
+    callback ungroup_selected();
+    callback filter_history_group(string);
+    callback toggle_group_expand(string);
+    callback delete_group(string);
 
     VerticalLayout {
                     visible: root.active_tab == 2;
@@ -95,6 +103,18 @@ export component HistoryTab inherits VerticalLayout {
                                 variant: "secondary";
                                 button_height: 32px;
                                 clicked => { root.create_methodology(); }
+                            }
+                            if root.selected_history_count >= 1: AppButton {
+                                text: Lang.t("group_action", Lang.current) + " (" + root.selected_history_count + ")";
+                                variant: "secondary";
+                                button_height: 32px;
+                                clicked => { root.open_group_dialog(); }
+                            }
+                            if root.has_grouped_selection: AppButton {
+                                text: Lang.t("ungroup_action", Lang.current);
+                                variant: "secondary";
+                                button_height: 32px;
+                                clicked => { root.ungroup_selected(); }
                             }
     
                             AppButton {
@@ -215,7 +235,7 @@ export component HistoryTab inherits VerticalLayout {
                                             Text { text: Lang.t("date", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
                                         }
                                         Rectangle {
-                                            width: 80px;
+                                            width: 90px;
                                             height: 36px;
                                             background: Theme.surface;
                                             Text { text: Lang.t("actions", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
@@ -237,7 +257,7 @@ export component HistoryTab inherits VerticalLayout {
                                         Rectangle { horizontal-stretch: 2; min-width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 46px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 54px; height: 10px; } } } }
                                         Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 44px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
                                         Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 12px; } } } }
-                                        Rectangle { width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 28px; } } } }
+                                        Rectangle { width: 90px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 78px; height: 26px; } } } }
                                     }
     
                                     // Row 2 Skeleton
@@ -255,7 +275,7 @@ export component HistoryTab inherits VerticalLayout {
                                         Rectangle { horizontal-stretch: 2; min-width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 46px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 54px; height: 10px; } } } }
                                         Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 44px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
                                         Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 12px; } } } }
-                                        Rectangle { width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 28px; } } } }
+                                        Rectangle { width: 90px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 78px; height: 26px; } } } }
                                     }
     
                                     // Row 3 Skeleton
@@ -273,7 +293,7 @@ export component HistoryTab inherits VerticalLayout {
                                         Rectangle { horizontal-stretch: 2; min-width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 46px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 54px; height: 10px; } } } }
                                         Rectangle { horizontal-stretch: 2; min-width: 75px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; spacing: 4px; HorizontalLayout { alignment: center; SkeletonBlock { width: 44px; height: 10px; } } HorizontalLayout { alignment: center; SkeletonBlock { width: 50px; height: 10px; } } } }
                                         Rectangle { horizontal-stretch: 2; min-width: 85px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 12px; } } } }
-                                        Rectangle { width: 80px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 68px; height: 28px; } } } }
+                                        Rectangle { width: 90px; height: 44px; background: Theme.surface; VerticalLayout { alignment: center; HorizontalLayout { alignment: center; SkeletonBlock { width: 78px; height: 26px; } } } }
                                     }
                                 }
                             }
@@ -379,7 +399,7 @@ export component HistoryTab inherits VerticalLayout {
                                         Text { text: Lang.t("date", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
                                     }
                                     Rectangle {
-                                        width: 80px;
+                                        width: 90px;
                                         height: 36px;
                                         background: Theme.surface;
                                         Text { text: Lang.t("actions", Lang.current); font-weight: 700; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
@@ -390,12 +410,26 @@ export component HistoryTab inherits VerticalLayout {
                                 // VERİ SATIRLARI (DATA ROWS)
                                 // ==========================================
                                 for item in root.history: Row {
-                                    // 1. Checkbox & Expand Chevron
+                                    // 1. Checkbox / Group Expand Chevron
                                     Rectangle {
                                         width: 48px;
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.2) : Theme.surface);
-                                        VerticalLayout {
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.2) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if item.is_group_header: Rectangle {
+                                            width: 100%;
+                                            height: 100%;
+                                            arrow_touch2 := TouchArea {
+                                                mouse-cursor: pointer;
+                                                clicked => { root.toggle_group_expand(item.group_name); }
+                                            }
+                                            Text {
+                                                text: item.is_expanded ? "v" : ">";
+                                                font-size: 13px; font-weight: 800;
+                                                color: arrow_touch2.has_hover ? #c4b5fd : Theme.text-main;
+                                                horizontal-alignment: center; vertical-alignment: center;
+                                            }
+                                        }
+                                        if !item.is_group_header: VerticalLayout {
                                             alignment: center;
                                             HorizontalLayout {
                                                 alignment: center;
@@ -431,12 +465,31 @@ export component HistoryTab inherits VerticalLayout {
                                         }
                                     }
 
-                                    // 2. Benchmark & Preset
+                                    // 2. Benchmark / Group Title
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        VerticalLayout {
-                                            padding-left: item.is_child ? 20px : 8px;
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if item.is_group_header: HorizontalLayout {
+                                            padding-left: 8px; spacing: 8px; alignment: start;
+                                            Text {
+                                                text: "📁 " + item.group_name + " (" + item.group_child_count + ")";
+                                                font-size: 14px; font-weight: 700; color: Theme.text-main;
+                                                vertical-alignment: center;
+                                            }
+                                            VerticalLayout {
+                                                alignment: center;
+                                                Rectangle {
+                                                    border-radius: 3px; background: #8b5cf6.darker(0.5); border-width: 1px; border-color: #8b5cf6;
+                                                    height: 16px;
+                                                    HorizontalLayout {
+                                                        padding-left: 4px; padding-right: 4px; alignment: center;
+                                                        Text { text: Lang.t("group_badge", Lang.current); font-size: 9px; font-weight: 800; color: #c4b5fd; vertical-alignment: center; }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if !item.is_group_header: VerticalLayout {
+                                            padding-left: item.is_child ? 20px : (item.is_in_group ? 16px : 8px);
                                             padding-right: 4px;
                                             alignment: center;
                                             spacing: 2px;
@@ -473,6 +526,28 @@ export component HistoryTab inherits VerticalLayout {
                                                         }
                                                     }
                                                 }
+                                                if item.is_in_group && item.group_name != "": VerticalLayout {
+                                                    alignment: center;
+                                                    Rectangle {
+                                                        border-radius: 3px;
+                                                        background: #3b82f6.darker(0.6);
+                                                        border-width: 1px;
+                                                        border-color: #3b82f6;
+                                                        height: 16px;
+                                                        HorizontalLayout {
+                                                            padding-left: 4px;
+                                                            padding-right: 4px;
+                                                            alignment: center;
+                                                            Text {
+                                                                text: item.group_name;
+                                                                font-size: 9px;
+                                                                font-weight: 700;
+                                                                color: #93c5fd;
+                                                                vertical-alignment: center;
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
                                             if !item.is_methodology && item.preset_or_version != "": Text {
                                                 text: item.preset_or_version;
@@ -483,133 +558,145 @@ export component HistoryTab inherits VerticalLayout {
                                             }
                                         }
                                     }
-    
+
                                     // 3. GPU Modu
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        Text { text: item.gpu_mode; font-size: 12px; color: Theme.text-main; horizontal-alignment: center; vertical-alignment: center; }
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: Text { text: item.gpu_mode; font-size: 12px; color: Theme.text-main; horizontal-alignment: center; vertical-alignment: center; }
                                     }
-    
+
                                     // 4. Skor
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        Text { text: item.score; font-size: 14px; font-weight: 700; color: Theme.success; horizontal-alignment: center; vertical-alignment: center; }
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: Text { text: item.score; font-size: 14px; font-weight: 700; color: Theme.success; horizontal-alignment: center; vertical-alignment: center; }
                                     }
-    
+
                                     // 5. Süre
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        Text { text: item.duration; font-size: 12px; color: Theme.text-main; horizontal-alignment: center; vertical-alignment: center; }
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: Text { text: item.duration; font-size: 12px; color: Theme.text-main; horizontal-alignment: center; vertical-alignment: center; }
                                     }
-    
+
                                     // 6. CPU Yük
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        VerticalLayout {
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_cpu_usage; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
                                             Text { text: item.cpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
-    
+
                                     // 7. CPU Sıcaklık
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        VerticalLayout {
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_cpu_temp; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
                                             Text { text: item.cpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
-    
+
                                     // 8. CPU Hız
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        VerticalLayout {
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_cpu_freq_mhz; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
                                             Text { text: item.cpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
-    
+
                                     // 9. GPU Yük
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        VerticalLayout {
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_gpu_usage; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
                                             Text { text: item.gpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
-    
+
                                     // 10. GPU Sıcaklık
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        VerticalLayout {
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_gpu_temp; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
                                             Text { text: item.gpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
-    
+
                                     // 11. Güç
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        VerticalLayout {
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_power_w; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
                                             Text { text: item.power_ram_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
-    
+
                                     // 12. RAM
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        VerticalLayout {
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_ram_gb; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
                                             Text { text: item.power_ram_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
-    
+
                                     // 13. Tarih
                                     Rectangle {
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        Text { text: item.date; font-size: 11px; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if !item.is_group_header: Text { text: item.date; font-size: 11px; color: Theme.text-muted; horizontal-alignment: center; vertical-alignment: center; }
                                     }
-    
+
                                     // 14. İşlem
                                     Rectangle {
-                                        width: 80px;
+                                        width: 90px;
                                         height: 44px;
-                                        background: item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : Theme.surface);
-                                        VerticalLayout {
+                                        background: item.is_group_header ? #2e1065.darker(0.3) : (item.selected ? Theme.primary.darker(0.6) : (item.is_child ? Theme.surface.darker(0.15) : item.is_in_group ? Theme.surface.darker(0.1) : Theme.surface));
+                                        if item.is_group_header: VerticalLayout {
+                                            alignment: center; padding-left: 4px; padding-right: 4px;
+                                            AppButton {
+                                                text: Lang.t("dissolve_group", Lang.current);
+                                                variant: "secondary";
+                                                button_height: 26px;
+                                                padding_x: 6px;
+                                                font_size: 11px;
+                                                clicked => { root.delete_group(item.group_name); }
+                                            }
+                                        }
+                                        if !item.is_group_header: VerticalLayout {
                                             alignment: center;
-                                            padding-left: 6px;
-                                            padding-right: 6px;
-    
+                                            padding-left: 4px;
+                                            padding-right: 4px;
                                             AppButton {
                                                 text: Lang.t("details", Lang.current);
                                                 variant: "secondary";
-                                                button_height: 28px;
+                                                button_height: 26px;
+                                                padding_x: 8px;
+                                                font_size: 11px;
                                                 clicked => { root.show_run_details(item.id); }
                                             }
                                         }

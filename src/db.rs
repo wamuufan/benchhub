@@ -131,6 +131,7 @@ impl Db {
             ("log_path", "TEXT NOT NULL DEFAULT ''"),
             ("is_methodology", "INTEGER NOT NULL DEFAULT 0"),
             ("methodology_parent_id", "INTEGER DEFAULT NULL"),
+            ("group_name", "TEXT DEFAULT NULL"),
         ];
 
         for (col, def) in run_migrations {
@@ -199,9 +200,9 @@ impl Db {
                 avg_vram_gb, peak_vram_gb,
                 cpu_throttling, gpu_throttling,
                 system_info_summary, power_profile, log_path,
-                is_methodology, methodology_parent_id
+                is_methodology, methodology_parent_id, group_name
             )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36, ?37, ?38, ?39)",
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36, ?37, ?38, ?39, ?40)",
             params![
                 run.benchmark_id,
                 run.category,
@@ -242,6 +243,7 @@ impl Db {
                 run.log_path,
                 run.is_methodology,
                 run.methodology_parent_id,
+                &run.group_name,
             ],
         )
         .context("Failed to insert run into database")?;
@@ -288,8 +290,9 @@ impl Db {
                 power_profile = ?34,
                 log_path = ?35,
                 is_methodology = ?36,
-                methodology_parent_id = ?37
-            WHERE id = ?38",
+                methodology_parent_id = ?37,
+                group_name = ?38
+            WHERE id = ?39",
             params![
                 run.category,
                 run.preset_or_version,
@@ -328,6 +331,7 @@ impl Db {
                 run.log_path,
                 run.is_methodology,
                 run.methodology_parent_id,
+                &run.group_name,
                 run.id,
             ],
         )
@@ -384,7 +388,7 @@ impl Db {
                 avg_vram_gb, peak_vram_gb,
                 cpu_throttling, gpu_throttling,
                 system_info_summary, power_profile, log_path,
-                is_methodology, methodology_parent_id
+                is_methodology, methodology_parent_id, group_name
             FROM runs
             WHERE methodology_parent_id = ?1
             ORDER BY timestamp ASC"
@@ -442,6 +446,7 @@ impl Db {
             log_path: row.get(37).unwrap_or_default(),
             is_methodology: row.get::<_, i64>(38).unwrap_or(0) != 0,
             methodology_parent_id: row.get(39).ok(),
+            group_name: row.get(40).ok(),
         })
     }
 
@@ -458,7 +463,7 @@ impl Db {
                 avg_vram_gb, peak_vram_gb,
                 cpu_throttling, gpu_throttling,
                 system_info_summary, power_profile, log_path,
-                is_methodology, methodology_parent_id
+                is_methodology, methodology_parent_id, group_name
             FROM runs
             WHERE id = ?1",
         )?;
@@ -492,7 +497,7 @@ impl Db {
                 avg_vram_gb, peak_vram_gb,
                 cpu_throttling, gpu_throttling,
                 system_info_summary, power_profile, log_path,
-                is_methodology, methodology_parent_id
+                is_methodology, methodology_parent_id, group_name
             FROM runs
             WHERE 1=1"
         );
@@ -676,5 +681,64 @@ impl Db {
             results.push(p?);
         }
         Ok(results)
+    }
+
+    pub fn set_runs_group(&self, run_ids: &[i64], group_name: &str) -> Result<()> {
+        let mut conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let tx = conn.transaction()?;
+        {
+            let mut stmt = tx.prepare("UPDATE runs SET group_name = ?1 WHERE id = ?2")?;
+            for id in run_ids {
+                stmt.execute(params![group_name, id])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn remove_runs_from_group(&self, run_ids: &[i64]) -> Result<()> {
+        let mut conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let tx = conn.transaction()?;
+        {
+            let mut stmt = tx.prepare("UPDATE runs SET group_name = NULL WHERE id = ?1")?;
+            for id in run_ids {
+                stmt.execute(params![id])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn delete_group(&self, group_name: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        conn.execute(
+            "UPDATE runs SET group_name = NULL WHERE group_name = ?1",
+            params![group_name],
+        )?;
+        Ok(())
+    }
+
+    pub fn rename_group(&self, old_name: &str, new_name: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        conn.execute(
+            "UPDATE runs SET group_name = ?2 WHERE group_name = ?1",
+            params![old_name, new_name],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_distinct_groups(&self) -> Result<Vec<String>> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT group_name FROM runs WHERE group_name IS NOT NULL AND group_name != '' ORDER BY group_name ASC",
+        )?;
+        let group_iter = stmt.query_map([], |row| row.get(0))?;
+        let mut groups = Vec::new();
+        for group in group_iter {
+            if let Ok(name) = group {
+                groups.push(name);
+            }
+        }
+        Ok(groups)
     }
 }

@@ -263,6 +263,7 @@ impl BenchHubService {
             power_profile: "Metodoloji".to_string(),
             is_methodology: true,
             methodology_parent_id: None,
+            group_name: None,
         };
 
         let new_id = self.db.create_methodology_record(&methodology, run_ids)?;
@@ -272,5 +273,25 @@ impl BenchHubService {
 
     pub fn get_methodology_children(&self, methodology_id: i64) -> anyhow::Result<Vec<RunResult>> {
         Ok(self.db.get_methodology_children(methodology_id)?)
+    }
+
+    pub fn group_runs(&self, run_ids: &[i64], group_name: &str) -> anyhow::Result<()> {
+        self.db.set_runs_group(run_ids, group_name)?;
+        Ok(())
+    }
+
+    pub fn ungroup_runs(&self, run_ids: &[i64]) -> anyhow::Result<()> {
+        self.db.remove_runs_from_group(run_ids)?;
+        Ok(())
+    }
+
+    pub fn delete_group(&self, group_name: &str) -> anyhow::Result<()> {
+        self.db.delete_group(group_name)?;
+        Ok(())
+    }
+
+    pub fn get_distinct_groups(&self) -> anyhow::Result<Vec<String>> {
+        let groups = self.db.get_distinct_groups()?;
+        Ok(groups)
     }
 }

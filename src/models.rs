@@ -210,6 +210,8 @@ pub struct RunResult {
     pub is_methodology: bool,
     #[serde(default)]
     pub methodology_parent_id: Option<i64>,
+    #[serde(default)]
+    pub group_name: Option<String>,
 }
 
 fn default_power_profile_str() -> String {

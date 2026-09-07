@@ -238,6 +238,7 @@ fn test_run_comparison_diff_calculation() {
         log_path: "/tmp/a.log".to_string(),
         is_methodology: false,
         methodology_parent_id: None,
+        group_name: None,
     };
 
     let run_b = RunResult {
@@ -281,6 +282,7 @@ fn test_run_comparison_diff_calculation() {
         log_path: "/tmp/b.log".to_string(),
         is_methodology: false,
         methodology_parent_id: None,
+        group_name: None,
     };
 
     let diff = RunComparisonDiff::calculate(run_a, run_b);

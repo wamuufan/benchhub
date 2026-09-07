@@ -622,6 +622,7 @@ async fn execute_single_benchmark_flow(
         log_path: log_path_str.clone(),
         is_methodology: false,
         methodology_parent_id: None,
+        group_name: None,
     };
 
     if let Ok(inserted_id) = app_state.service.db.insert_run(&run_res) {

@@ -16,6 +16,10 @@ pub fn format_history_item(
     has_children: bool,
     child_count: usize,
     depth: i32,
+    group_name: &str,
+    is_group_header: bool,
+    is_in_group: bool,
+    group_child_count: usize,
 ) -> HistoryItem {
     let date_str = DateTime::from_timestamp(run.timestamp, 0)
         .map(|dt| dt.format("%m-%d %H:%M").to_string())
@@ -201,11 +205,27 @@ pub fn format_history_item(
         has_children,
         child_count: child_count as i32,
         depth,
+        group_name: group_name.into(),
+        is_group_header,
+        is_in_group,
+        group_child_count: group_child_count as i32,
     }
 }
 
 pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState) {
     let mut can_create = false;
+    let mut has_grouped = false;
+    if filter.selected_ids.len() >= 1 {
+        for &id in &filter.selected_ids {
+            if let Ok(Some(r)) = db.get_run_by_id(id) {
+                if r.group_name.is_some() {
+                    has_grouped = true;
+                    break;
+                }
+            }
+        }
+    }
+    
     if filter.selected_ids.len() >= 2 {
         let mut first_bench_id = None;
         can_create = true;
@@ -227,6 +247,18 @@ pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState
         }
     }
     ui.set_can_create_methodology(can_create);
+    ui.set_has_grouped_selection(has_grouped);
+
+    let mut group_names_model = vec![
+        benchhub::i18n::t("group_filter_all").into(),
+        benchhub::i18n::t("group_filter_ungrouped").into(),
+    ];
+    if let Ok(groups) = db.get_distinct_groups() {
+        for g in groups {
+            group_names_model.push(g.into());
+        }
+    }
+    ui.set_history_groups(ModelRc::from(Rc::new(VecModel::from(group_names_model))));
 
     match db.get_filtered_history(
         &filter.search,
@@ -237,51 +269,106 @@ pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState
     ) {
         Ok(runs) => {
             let mut history_items = Vec::new();
-            for run in &runs {
+            
+            // Filter by group if needed
+            let filtered_runs: Vec<_> = if let Some(ref g) = filter.selected_group {
+                runs.into_iter().filter(|r| {
+                    if g == "" { r.group_name.is_none() } else { r.group_name.as_deref() == Some(g.as_str()) }
+                }).collect()
+            } else {
+                runs
+            };
+            
+            use std::collections::BTreeMap;
+            let mut grouped_runs: BTreeMap<String, Vec<RunResult>> = BTreeMap::new();
+            let mut ungrouped_runs: Vec<RunResult> = Vec::new();
+            
+            for run in filtered_runs {
                 if run.methodology_parent_id.is_some() {
                     continue;
                 }
+                if let Some(ref group_name) = run.group_name {
+                    grouped_runs.entry(group_name.clone()).or_default().push(run);
+                } else {
+                    ungrouped_runs.push(run);
+                }
+            }
+            
+            for (group_name, g_runs) in grouped_runs {
+                let is_expanded = !filter.collapsed_group_names.contains(&group_name);
                 
+                // Group Header
+                let mut header_run = RunResult::default();
+                header_run.id = 0;
+                history_items.push(format_history_item(
+                    &header_run,
+                    false, false, false, is_expanded, false, 0, 0,
+                    &group_name, true, false, g_runs.len()
+                ));
+                
+                if is_expanded {
+                    for run in g_runs {
+                        if run.is_methodology {
+                            let children = db.get_methodology_children(run.id).unwrap_or_default();
+                            let meth_expanded = filter.expanded_methodology_ids.contains(&run.id);
+                            history_items.push(format_history_item(
+                                &run,
+                                filter.selected_ids.contains(&run.id),
+                                true, false, meth_expanded, true, children.len(), 0,
+                                &group_name, false, true, 0
+                            ));
+                            if meth_expanded {
+                                for child in children {
+                                    history_items.push(format_history_item(
+                                        &child,
+                                        filter.selected_ids.contains(&child.id),
+                                        false, true, false, false, 0, 1,
+                                        &group_name, false, true, 0
+                                    ));
+                                }
+                            }
+                        } else {
+                            history_items.push(format_history_item(
+                                &run,
+                                filter.selected_ids.contains(&run.id),
+                                false, false, false, false, 0, 0,
+                                &group_name, false, true, 0
+                            ));
+                        }
+                    }
+                }
+            }
+            
+            for run in ungrouped_runs {
                 if run.is_methodology {
                     let children = db.get_methodology_children(run.id).unwrap_or_default();
-                    let is_expanded = filter.expanded_methodology_ids.contains(&run.id);
+                    let meth_expanded = filter.expanded_methodology_ids.contains(&run.id);
                     history_items.push(format_history_item(
-                        run,
+                        &run,
                         filter.selected_ids.contains(&run.id),
-                        true,
-                        false,
-                        is_expanded,
-                        true,
-                        children.len(),
-                        0,
+                        true, false, meth_expanded, true, children.len(), 0,
+                        "", false, false, 0
                     ));
-                    if is_expanded {
-                        for child in &children {
+                    if meth_expanded {
+                        for child in children {
                             history_items.push(format_history_item(
-                                child,
+                                &child,
                                 filter.selected_ids.contains(&child.id),
-                                false,
-                                true,
-                                false,
-                                false,
-                                0,
-                                1,
+                                false, true, false, false, 0, 1,
+                                "", false, false, 0
                             ));
                         }
                     }
                 } else {
                     history_items.push(format_history_item(
-                        run,
+                        &run,
                         filter.selected_ids.contains(&run.id),
-                        false,
-                        false,
-                        false,
-                        false,
-                        0,
-                        0,
+                        false, false, false, false, 0, 0,
+                        "", false, false, 0
                     ));
                 }
             }
+
             ui.set_history(ModelRc::from(Rc::new(VecModel::from(history_items))));
             ui.set_selected_history_count(filter.selected_ids.len() as i32);
         }

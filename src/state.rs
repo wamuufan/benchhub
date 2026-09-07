@@ -42,4 +42,6 @@ pub struct HistoryFilterState {
     pub sort_order: HistorySortOrder,
     pub selected_ids: Vec<i64>,
     pub expanded_methodology_ids: std::collections::HashSet<i64>,
+    pub selected_group: Option<String>,
+    pub collapsed_group_names: std::collections::HashSet<String>,
 }

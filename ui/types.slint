@@ -52,6 +52,10 @@ export struct HistoryItem {
     has_children: bool,
     child_count: int,
     depth: int,
+    group_name: string,
+    is_group_header: bool,
+    is_in_group: bool,
+    group_child_count: int,
 }
 
 export struct CompareRunColumn {

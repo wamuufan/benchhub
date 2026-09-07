@@ -47,6 +47,7 @@ fn create_mock_run(id: i64, benchmark_id: &str, score: f64, category: &str) -> R
         log_path: "/tmp/test.log".to_string(),
         is_methodology: false,
         methodology_parent_id: None,
+        group_name: None,
         timestamp: 1724700000,
     }
 }
@@ -163,6 +164,7 @@ fn create_sample_run(
         log_path: "/tmp/test,path/with \"quotes\" and\nnewlines.log".to_string(),
         is_methodology: false,
         methodology_parent_id: None,
+        group_name: None,
     }
 }
 
