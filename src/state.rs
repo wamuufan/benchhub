@@ -23,7 +23,9 @@ pub struct AppState {
     pub selected_gpu_mode: Arc<std::sync::Mutex<GpuMode>>,
     pub max_test_duration_secs: Arc<std::sync::atomic::AtomicU64>,
     pub custom_configs: Arc<
-        std::sync::Mutex<std::collections::HashMap<String, benchhub::bench_config::BenchmarkCustomConfig>>,
+        std::sync::Mutex<
+            std::collections::HashMap<String, benchhub::bench_config::BenchmarkCustomConfig>,
+        >,
     >,
     pub is_queue_running: Arc<AtomicBool>,
 }

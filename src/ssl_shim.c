@@ -9,6 +9,10 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 
+#ifndef O_TMPFILE
+#define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
+#endif
+
 static const char* get_real_ca_path(void) {
     static const char* candidate_paths[] = {
         "/etc/ssl/ca-bundle.pem",
@@ -49,7 +53,7 @@ int open(const char *pathname, int flags, ...) {
     static orig_open_f_type orig_open = NULL;
     if (!orig_open) orig_open = (orig_open_f_type)dlsym(RTLD_NEXT, "open");
     const char *target = should_redirect(pathname) ? get_real_ca_path() : pathname;
-    if (flags & O_CREAT) {
+    if ((flags & O_CREAT) || ((flags & O_TMPFILE) == O_TMPFILE)) {
         va_list args;
         va_start(args, flags);
         mode_t mode = va_arg(args, mode_t);
@@ -63,7 +67,7 @@ int open64(const char *pathname, int flags, ...) {
     static orig_open64_f_type orig_open64 = NULL;
     if (!orig_open64) orig_open64 = (orig_open64_f_type)dlsym(RTLD_NEXT, "open64");
     const char *target = should_redirect(pathname) ? get_real_ca_path() : pathname;
-    if (flags & O_CREAT) {
+    if ((flags & O_CREAT) || ((flags & O_TMPFILE) == O_TMPFILE)) {
         va_list args;
         va_start(args, flags);
         mode_t mode = va_arg(args, mode_t);
@@ -77,7 +81,7 @@ int openat(int dirfd, const char *pathname, int flags, ...) {
     static orig_openat_f_type orig_openat = NULL;
     if (!orig_openat) orig_openat = (orig_openat_f_type)dlsym(RTLD_NEXT, "openat");
     const char *target = should_redirect(pathname) ? get_real_ca_path() : pathname;
-    if (flags & O_CREAT) {
+    if ((flags & O_CREAT) || ((flags & O_TMPFILE) == O_TMPFILE)) {
         va_list args;
         va_start(args, flags);
         mode_t mode = va_arg(args, mode_t);

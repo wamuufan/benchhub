@@ -200,6 +200,22 @@ fn test_csv_generation_headers_and_escaping() {
     assert!(csv_output.contains("85.1")); // cpu usage
     assert!(csv_output.contains("12.35")); // ram gb
     assert!(csv_output.contains("15.68")); // peak ram gb
+
+    // Check newly added GPU, VRAM, Power and throttling metrics
+    assert!(csv_output.contains("1950")); // avg_gpu_freq_mhz
+    assert!(csv_output.contains("2200")); // peak_gpu_freq_mhz
+    assert!(csv_output.contains("75.5")); // avg_gpu_power_w
+    assert!(csv_output.contains("105.0")); // peak_gpu_power_w
+    assert!(csv_output.contains("5.40")); // avg_vram_gb
+    assert!(csv_output.contains("7.20")); // peak_vram_gb
+    assert!(csv_output.contains("160.2")); // avg_ac_power_w
+    assert!(csv_output.contains("210.0")); // peak_ac_power_w
+
+    // Test with group_name
+    let mut run_with_group = create_sample_run(2, "geekbench", "CPU", Some(3000.0), "AMD");
+    run_with_group.group_name = Some("Batch Run 1".to_string());
+    let csv_with_group = generate_history_csv(&[run_with_group]);
+    assert!(csv_with_group.contains("Batch Run 1"));
 }
 
 #[test]

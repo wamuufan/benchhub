@@ -1,16 +1,22 @@
 use benchhub::db::Db;
+use benchhub::engine::BenchmarkEngine;
 use benchhub::models::RunResult;
 use benchhub::service::BenchHubService;
 use std::sync::Arc;
-use benchhub::engine::BenchmarkEngine;
 
 #[tokio::test]
+#[allow(clippy::field_reassign_with_default)]
 async fn test_methodology_creation_and_deletion() {
     let temp_dir = tempfile::tempdir().unwrap();
     let db_path = temp_dir.path().join("test.db");
     let db = Db::new(db_path).unwrap();
     let engine = BenchmarkEngine::new(temp_dir.path().to_path_buf());
-    let service = BenchHubService::new(db.clone(), engine, Arc::new(vec![]), temp_dir.path().to_path_buf());
+    let service = BenchHubService::new(
+        db.clone(),
+        engine,
+        Arc::new(vec![]),
+        temp_dir.path().to_path_buf(),
+    );
 
     let mut run1 = RunResult::default();
     run1.benchmark_id = "7zip".to_string();
@@ -48,7 +54,7 @@ async fn test_methodology_creation_and_deletion() {
 
     let run1_after = db.get_run_by_id(id1).unwrap().unwrap();
     assert_eq!(run1_after.methodology_parent_id, None);
-    
+
     let methodology_after = db.get_run_by_id(methodology.id).unwrap();
     assert!(methodology_after.is_none());
 }

@@ -338,18 +338,21 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
                     .min(128);
                 ui.set_bench_config_ffmpeg_threads(threads as i32);
                 let duration_str = ui.get_bench_config_ffmpeg_selected_duration();
-                let (duration_enabled, duration_secs) =
-                    if duration_str.contains("Süresiz") || duration_str.contains("Tam") {
-                        (false, 0)
-                    } else {
-                        let num: u32 = duration_str
-                            .chars()
-                            .take_while(|c| c.is_ascii_digit())
-                            .collect::<String>()
-                            .parse()
-                            .unwrap_or(20);
-                        (true, num)
-                    };
+                let (duration_enabled, duration_secs) = if duration_str.contains("Süresiz")
+                    || duration_str.contains("Unlimited")
+                    || duration_str.contains("Tam")
+                    || duration_str.contains("Full")
+                {
+                    (false, 0)
+                } else {
+                    let num: u32 = duration_str
+                        .chars()
+                        .take_while(|c| c.is_ascii_digit())
+                        .collect::<String>()
+                        .parse()
+                        .unwrap_or(20);
+                    (true, num)
+                };
 
                 let ffmpeg_cfg = benchhub::bench_config::FfmpegConfig {
                     codec: ui.get_bench_config_ffmpeg_selected_codec().to_string(),
@@ -457,18 +460,21 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
                     .unwrap_or(0)
                     .min(128);
                 let duration_str = ui.get_bench_config_ffmpeg_selected_duration();
-                let (duration_enabled, duration_secs) =
-                    if duration_str.contains("Süresiz") || duration_str.contains("Tam") {
-                        (false, 0)
-                    } else {
-                        let num: u32 = duration_str
-                            .chars()
-                            .take_while(|c| c.is_ascii_digit())
-                            .collect::<String>()
-                            .parse()
-                            .unwrap_or(20);
-                        (true, num)
-                    };
+                let (duration_enabled, duration_secs) = if duration_str.contains("Süresiz")
+                    || duration_str.contains("Unlimited")
+                    || duration_str.contains("Tam")
+                    || duration_str.contains("Full")
+                {
+                    (false, 0)
+                } else {
+                    let num: u32 = duration_str
+                        .chars()
+                        .take_while(|c| c.is_ascii_digit())
+                        .collect::<String>()
+                        .parse()
+                        .unwrap_or(20);
+                    (true, num)
+                };
 
                 let ffmpeg_cfg = benchhub::bench_config::FfmpegConfig {
                     codec: ui.get_bench_config_ffmpeg_selected_codec().to_string(),
@@ -637,11 +643,21 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
                 ui.set_bench_config_ffmpeg_selected_resolution(
                     default_cfg.resolution.clone().into(),
                 );
-                ui.set_bench_config_ffmpeg_selected_input_source(
-                    default_cfg.input_source.clone().into(),
-                );
+                let localized_source = if default_cfg.input_source.to_lowercase().contains("bunny")
+                {
+                    benchhub::i18n::t("bench_settings_source_bunny")
+                } else if default_cfg.input_source.to_lowercase().contains("steel")
+                    || default_cfg.input_source.to_lowercase().contains("tears")
+                {
+                    benchhub::i18n::t("bench_settings_source_tears")
+                } else {
+                    benchhub::i18n::t("bench_settings_source_synthetic")
+                };
+                ui.set_bench_config_ffmpeg_selected_input_source(localized_source.into());
                 let dur_str = if !default_cfg.duration_enabled {
-                    "Süresiz (Tam Kaynak)".to_string()
+                    benchhub::i18n::t("bench_settings_dur_unlimited")
+                } else if default_cfg.duration_secs == 20 {
+                    benchhub::i18n::t("bench_settings_dur_20s")
                 } else {
                     format!("{}s", default_cfg.duration_secs)
                 };
@@ -656,7 +672,12 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
                 let default_cfg = benchhub::bench_config::SevenZipConfig::default();
                 ui.set_bench_config_7zip_threads(default_cfg.threads as i32);
                 ui.set_bench_config_7zip_threads_str(default_cfg.threads.to_string().into());
-                ui.set_bench_config_7zip_selected_dict_size(default_cfg.dict_size.clone().into());
+                let dict_size_str = if default_cfg.dict_size.contains("32MB") {
+                    benchhub::i18n::t("bench_settings_dict_32mb")
+                } else {
+                    default_cfg.dict_size.clone()
+                };
+                ui.set_bench_config_7zip_selected_dict_size(dict_size_str.into());
                 ui.set_bench_config_7zip_passes(default_cfg.passes as i32);
                 ui.set_bench_config_7zip_passes_str(default_cfg.passes.to_string().into());
                 ui.set_bench_config_custom_args("".into());
@@ -781,13 +802,18 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
     let app_state_create_meth = app_state.clone();
     let ui_weak_create_meth = ui.as_weak();
     ui.on_create_methodology(move || {
-        let mut filter = history_filter_create_meth.lock().unwrap_or_else(|e| e.into_inner());
+        let mut filter = history_filter_create_meth
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let count = filter.selected_ids.len();
         if count < 2 {
             return;
         }
-        
-        match app_state_create_meth.service.create_methodology(&filter.selected_ids) {
+
+        match app_state_create_meth
+            .service
+            .create_methodology(&filter.selected_ids)
+        {
             Ok(_new_run) => {
                 // Varsayılanda metodolojinin alt testleri gizli (collapsed) kalsın
                 filter.selected_ids.clear();
@@ -816,7 +842,9 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
     let ui_weak_toggle_meth = ui.as_weak();
     ui.on_toggle_methodology_expand(move |id| {
         let id_64 = id as i64;
-        let mut filter = history_filter_toggle_meth.lock().unwrap_or_else(|e| e.into_inner());
+        let mut filter = history_filter_toggle_meth
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         if filter.expanded_methodology_ids.contains(&id_64) {
             filter.expanded_methodology_ids.remove(&id_64);
         } else {
@@ -1210,7 +1238,11 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
             if let Some(ui) = ui_weak_details.upgrade() {
                 if run.is_methodology {
                     ui.set_details_title(
-                        format!("🔍 [METODOLOJİ] {}: {}", localized_name, run.preset_or_version).into(),
+                        format!(
+                            "🔍 [METODOLOJİ] {}: {}",
+                            localized_name, run.preset_or_version
+                        )
+                        .into(),
                     );
                 } else {
                     ui.set_details_title(
@@ -1299,10 +1331,15 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
         if name.is_empty() {
             name = get_next_default_group_name(&service_confirm_group.db);
         }
-        let mut filter = filter_confirm_group.lock().unwrap_or_else(|e| e.into_inner());
+        let mut filter = filter_confirm_group
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         if !filter.selected_ids.is_empty() {
             let count_str = filter.selected_ids.len().to_string();
-            if let Ok(_) = service_confirm_group.group_runs(&filter.selected_ids, &name) {
+            if service_confirm_group
+                .group_runs(&filter.selected_ids, &name)
+                .is_ok()
+            {
                 // Ensure newly created group is expanded by default
                 filter.collapsed_group_names.remove(&name);
                 if let Some(ui) = ui_weak_confirm_group.upgrade() {
@@ -1327,7 +1364,7 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
     ui.on_ungroup_selected(move || {
         let mut filter = filter_ungroup.lock().unwrap_or_else(|e| e.into_inner());
         if !filter.selected_ids.is_empty() {
-            if let Ok(_) = service_ungroup.ungroup_runs(&filter.selected_ids) {
+            if service_ungroup.ungroup_runs(&filter.selected_ids).is_ok() {
                 if let Some(ui) = ui_weak_ungroup.upgrade() {
                     let msg = benchhub::i18n::t("runs_ungrouped_success");
                     ui.set_status_text(msg.into());
@@ -1345,7 +1382,9 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
     let filter_toggle_g_exp = history_filter_state.clone();
     let db_toggle_g_exp = db.clone();
     ui.on_toggle_group_expand(move |group_name| {
-        let mut filter = filter_toggle_g_exp.lock().unwrap_or_else(|e| e.into_inner());
+        let mut filter = filter_toggle_g_exp
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let name = group_name.to_string();
         if filter.collapsed_group_names.contains(&name) {
             filter.collapsed_group_names.remove(&name);
@@ -1363,10 +1402,9 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
     let filter_del_group = history_filter_state.clone();
     ui.on_delete_group(move |group_name| {
         let name = group_name.to_string();
-        if let Ok(_) = service_del_group.delete_group(&name) {
+        if service_del_group.delete_group(&name).is_ok() {
             if let Some(ui) = ui_weak_del_group.upgrade() {
-                let msg = benchhub::i18n::t("group_deleted_success")
-                    .replace("{}", &name);
+                let msg = benchhub::i18n::t("group_deleted_success").replace("{}", &name);
                 ui.set_status_text(msg.into());
             }
         }

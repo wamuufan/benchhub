@@ -587,7 +587,7 @@ pub fn generate_history_csv(runs: &[RunResult]) -> String {
         let score_str = run.score.map(|s| s.to_string()).unwrap_or_default();
 
         csv.push_str(&format!(
-            "{},{},{},{},{},{},{},{},{},{:.1},{:.1},{:.1},{:.1},{:.1},{},{},{:.1},{:.1},{:.1},{:.1},{:.1},{:.1},{:.2},{:.2},{},{}\n",
+            "{},{},{},{},{},{},{},{},{},{:.1},{:.1},{:.1},{:.1},{:.1},{},{},{:.1},{:.1},{:.1},{:.1},{:.1},{:.1},{:.2},{:.2},{},{},{},{},{},{},{:.1},{:.1},{:.2},{:.2},{:.1},{:.1},{},{},{}\n",
             run.id,
             escape_csv_cell(&run.benchmark_id),
             escape_csv_cell(&run.category),
@@ -614,6 +614,19 @@ pub fn generate_history_csv(runs: &[RunResult]) -> String {
             run.peak_ram_gb,
             escape_csv_cell(&run.system_info_summary),
             escape_csv_cell(&run.log_path),
+            run.avg_gpu_freq_mhz,
+            run.peak_gpu_freq_mhz,
+            run.avg_vram_freq_mhz,
+            run.peak_vram_freq_mhz,
+            run.avg_gpu_power_w,
+            run.peak_gpu_power_w,
+            run.avg_vram_gb,
+            run.peak_vram_gb,
+            run.avg_ac_power_w,
+            run.peak_ac_power_w,
+            escape_csv_cell(&run.cpu_throttling),
+            escape_csv_cell(&run.gpu_throttling),
+            escape_csv_cell(run.group_name.as_deref().unwrap_or("")),
         ));
     }
     csv

@@ -131,18 +131,30 @@ impl AppSettings {
 }
 
 pub fn parse_max_test_duration(s: &str) -> u64 {
-    if s.contains("60 ") || s.starts_with("60") {
-        60
-    } else if s.contains("120") {
-        120
-    } else if s.contains("180") {
-        180
+    if s.contains("600") {
+        600
     } else if s.contains("300") {
         300
-    } else if s.contains("600") {
-        600
-    } else {
+    } else if s.contains("180") {
+        180
+    } else if s.contains("120") {
+        120
+    } else if s.contains("60") {
+        60
+    } else if s.contains("Sınırsız")
+        || s.contains("Unlimited")
+        || s.contains("Süresiz")
+        || s.contains("Limit Yok")
+        || s.contains("No Limit")
+    {
         0
+    } else {
+        let digits: String = s
+            .chars()
+            .skip_while(|c| !c.is_ascii_digit())
+            .take_while(|c| c.is_ascii_digit())
+            .collect();
+        digits.parse().unwrap_or(0)
     }
 }
 
@@ -415,5 +427,39 @@ mod tests {
         assert_eq!(reloaded.telemetry_interval_ms, 1000);
 
         let _ = fs::remove_dir_all(&tmp_dir);
+    }
+
+    #[test]
+    fn test_parse_and_format_max_test_duration() {
+        assert_eq!(parse_max_test_duration("60 saniye (1 dk)"), 60);
+        assert_eq!(parse_max_test_duration("60 seconds (1 min)"), 60);
+        assert_eq!(parse_max_test_duration("120 saniye (2 dk)"), 120);
+        assert_eq!(parse_max_test_duration("120 seconds (2 min)"), 120);
+        assert_eq!(parse_max_test_duration("180 saniye (3 dk)"), 180);
+        assert_eq!(parse_max_test_duration("180 seconds (3 min)"), 180);
+        assert_eq!(parse_max_test_duration("300 saniye (5 dk - Önerilen)"), 300);
+        assert_eq!(
+            parse_max_test_duration("300 seconds (5 min - Recommended)"),
+            300
+        );
+        assert_eq!(parse_max_test_duration("600 saniye (10 dk)"), 600);
+        assert_eq!(parse_max_test_duration("600 seconds (10 min)"), 600);
+        assert_eq!(parse_max_test_duration("Sınırsız (Limit Yok)"), 0);
+        assert_eq!(parse_max_test_duration("Unlimited (No Limit)"), 0);
+        assert_eq!(parse_max_test_duration("Süresiz"), 0);
+        assert_eq!(parse_max_test_duration("unknown text"), 0);
+
+        assert_eq!(format_max_test_duration(60, "tr"), "60 saniye (1 dk)");
+        assert_eq!(format_max_test_duration(60, "en"), "60 seconds (1 min)");
+        assert_eq!(
+            format_max_test_duration(300, "tr"),
+            "300 saniye (5 dk - Önerilen)"
+        );
+        assert_eq!(
+            format_max_test_duration(300, "en"),
+            "300 seconds (5 min - Recommended)"
+        );
+        assert_eq!(format_max_test_duration(0, "tr"), "Sınırsız (Limit Yok)");
+        assert_eq!(format_max_test_duration(0, "en"), "Unlimited (No Limit)");
     }
 }

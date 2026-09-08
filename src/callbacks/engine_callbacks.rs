@@ -69,7 +69,10 @@ pub fn register_engine_callbacks(ui: &AppWindow, app_state: &AppState) {
 
         if let Some(ui) = ui_weak_start_inst.upgrade() {
             if !ui.get_install_eula_accepted() || !ui.get_install_liability_accepted() {
-                tracing::warn!("Installation rejected: EULA or Liability not accepted for benchmark '{}'", id);
+                tracing::warn!(
+                    "Installation rejected: EULA or Liability not accepted for benchmark '{}'",
+                    id
+                );
                 return;
             }
             let catalog = ui.get_catalog();
@@ -185,7 +188,8 @@ pub fn register_engine_callbacks(ui: &AppWindow, app_state: &AppState) {
                         );
                         ui.set_status_text(benchhub::i18n::t("status_install_success").into());
                     } else if let Some(ref err) = err_msg {
-                        let err_str = benchhub::i18n::t("status_install_error").replace("{}", err.as_str());
+                        let err_str =
+                            benchhub::i18n::t("status_install_error").replace("{}", err.as_str());
                         ui.set_install_dialog_status(err_str.clone().into());
                         ui.set_status_text(err_str.into());
                     }

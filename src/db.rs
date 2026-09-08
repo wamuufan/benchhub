@@ -4,6 +4,8 @@ use rusqlite::{params, Connection};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+pub const RUNS_SELECT_COLUMNS: &str = "id, benchmark_id, category, preset_or_version, gpu_mode, score, status, timestamp, duration_secs, avg_cpu_usage, peak_cpu_usage, avg_cpu_temp, peak_cpu_temp, avg_cpu_freq_mhz, peak_cpu_freq_mhz, avg_gpu_usage, peak_gpu_usage, avg_gpu_temp, peak_gpu_temp, avg_gpu_freq_mhz, peak_gpu_freq_mhz, avg_vram_freq_mhz, peak_vram_freq_mhz, avg_gpu_power_w, peak_gpu_power_w, avg_power_w, peak_power_w, avg_ac_power_w, peak_ac_power_w, avg_ram_gb, peak_ram_gb, avg_vram_gb, peak_vram_gb, cpu_throttling, gpu_throttling, system_info_summary, power_profile, log_path, is_methodology, methodology_parent_id, group_name";
+
 #[derive(Clone)]
 pub struct Db {
     conn: Arc<Mutex<Connection>>,
@@ -137,7 +139,14 @@ impl Db {
         for (col, def) in run_migrations {
             if !existing_cols.iter().any(|c| c == col) {
                 let query = format!("ALTER TABLE runs ADD COLUMN {} {};", col, def);
-                let _ = conn.execute(&query, []);
+                if let Err(e) = conn.execute(&query, []) {
+                    let err_msg = e.to_string().to_lowercase();
+                    if err_msg.contains("duplicate column") {
+                        tracing::debug!("Column {} already exists", col);
+                    } else {
+                        tracing::error!("Migration hatası ({}): {}", col, e);
+                    }
+                }
             }
         }
 
@@ -181,7 +190,14 @@ impl Db {
         for (col, def) in telemetry_migrations {
             if !existing_t_cols.iter().any(|c| c == col) {
                 let query = format!("ALTER TABLE telemetry_points ADD COLUMN {} {};", col, def);
-                let _ = conn.execute(&query, []);
+                if let Err(e) = conn.execute(&query, []) {
+                    let err_msg = e.to_string().to_lowercase();
+                    if err_msg.contains("duplicate column") {
+                        tracing::debug!("Column {} already exists", col);
+                    } else {
+                        tracing::error!("Migration hatası ({}): {}", col, e);
+                    }
+                }
             }
         }
         Ok(())
@@ -340,59 +356,63 @@ impl Db {
     }
 
     pub fn delete_run(&self, id: i64) -> Result<()> {
-        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let mut conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let tx = conn.transaction().context("Failed to start transaction")?;
+
         let mut is_methodology = false;
-        if let Ok(mut stmt) = conn.prepare("SELECT is_methodology FROM runs WHERE id = ?1") {
+        if let Ok(mut stmt) = tx.prepare("SELECT is_methodology FROM runs WHERE id = ?1") {
             if let Ok(mut rows) = stmt.query(params![id]) {
                 if let Ok(Some(row)) = rows.next() {
                     is_methodology = row.get::<_, i64>(0).unwrap_or(0) != 0;
                 }
             }
         }
-        
+
         if is_methodology {
-            conn.execute("UPDATE runs SET methodology_parent_id = NULL WHERE methodology_parent_id = ?1", params![id])
-                .context("Failed to detach children from methodology")?;
+            tx.execute(
+                "UPDATE runs SET methodology_parent_id = NULL WHERE methodology_parent_id = ?1",
+                params![id],
+            )
+            .context("Failed to detach children from methodology")?;
         }
 
-        conn.execute(
+        tx.execute(
             "DELETE FROM telemetry_points WHERE run_id = ?1",
             params![id],
         )
         .context("Failed to delete telemetry points for run")?;
-        conn.execute("DELETE FROM runs WHERE id = ?1", params![id])
+
+        tx.execute("DELETE FROM runs WHERE id = ?1", params![id])
             .context("Failed to delete run record from database")?;
+
+        tx.commit().context("Failed to commit transaction")?;
         Ok(())
     }
 
-    pub fn create_methodology_record(&self, methodology_run: &RunResult, child_ids: &[i64]) -> Result<i64> {
+    pub fn create_methodology_record(
+        &self,
+        methodology_run: &RunResult,
+        child_ids: &[i64],
+    ) -> Result<i64> {
         let id = self.insert_run(methodology_run)?;
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         for child_id in child_ids {
-            conn.execute("UPDATE runs SET methodology_parent_id = ?1 WHERE id = ?2", params![id, child_id])
-                .context("Failed to update methodology_parent_id for child")?;
+            conn.execute(
+                "UPDATE runs SET methodology_parent_id = ?1 WHERE id = ?2",
+                params![id, child_id],
+            )
+            .context("Failed to update methodology_parent_id for child")?;
         }
         Ok(id)
     }
 
     pub fn get_methodology_children(&self, methodology_id: i64) -> Result<Vec<RunResult>> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
-        let mut stmt = conn.prepare(
-            "SELECT
-                id, benchmark_id, category, preset_or_version, gpu_mode, score, status,
-                timestamp, duration_secs, avg_cpu_usage, peak_cpu_usage, avg_cpu_temp, peak_cpu_temp,
-                avg_cpu_freq_mhz, peak_cpu_freq_mhz, avg_gpu_usage, peak_gpu_usage, avg_gpu_temp,
-                peak_gpu_temp, avg_gpu_freq_mhz, peak_gpu_freq_mhz, avg_vram_freq_mhz, peak_vram_freq_mhz,
-                avg_gpu_power_w, peak_gpu_power_w, avg_power_w, peak_power_w,
-                avg_ac_power_w, peak_ac_power_w, avg_ram_gb, peak_ram_gb,
-                avg_vram_gb, peak_vram_gb,
-                cpu_throttling, gpu_throttling,
-                system_info_summary, power_profile, log_path,
-                is_methodology, methodology_parent_id, group_name
-            FROM runs
-            WHERE methodology_parent_id = ?1
-            ORDER BY timestamp ASC"
-        )?;
+        let query = format!(
+            "SELECT {} FROM runs WHERE methodology_parent_id = ?1 ORDER BY timestamp ASC",
+            RUNS_SELECT_COLUMNS
+        );
+        let mut stmt = conn.prepare(&query)?;
         let run_iter = stmt.query_map(params![methodology_id], Self::map_row_to_run_result)?;
         let mut results = Vec::new();
         for run in run_iter {
@@ -452,21 +472,8 @@ impl Db {
 
     pub fn get_run_by_id(&self, id: i64) -> Result<Option<RunResult>> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
-        let mut stmt = conn.prepare(
-            "SELECT
-                id, benchmark_id, category, preset_or_version, gpu_mode, score, status,
-                timestamp, duration_secs, avg_cpu_usage, peak_cpu_usage, avg_cpu_temp, peak_cpu_temp,
-                avg_cpu_freq_mhz, peak_cpu_freq_mhz, avg_gpu_usage, peak_gpu_usage, avg_gpu_temp,
-                peak_gpu_temp, avg_gpu_freq_mhz, peak_gpu_freq_mhz, avg_vram_freq_mhz, peak_vram_freq_mhz,
-                avg_gpu_power_w, peak_gpu_power_w, avg_power_w, peak_power_w,
-                avg_ac_power_w, peak_ac_power_w, avg_ram_gb, peak_ram_gb,
-                avg_vram_gb, peak_vram_gb,
-                cpu_throttling, gpu_throttling,
-                system_info_summary, power_profile, log_path,
-                is_methodology, methodology_parent_id, group_name
-            FROM runs
-            WHERE id = ?1",
-        )?;
+        let query = format!("SELECT {} FROM runs WHERE id = ?1", RUNS_SELECT_COLUMNS);
+        let mut stmt = conn.prepare(&query)?;
         let mut rows = stmt.query_map(params![id], Self::map_row_to_run_result)?;
 
         if let Some(row_res) = rows.next() {
@@ -474,6 +481,28 @@ impl Db {
         } else {
             Ok(None)
         }
+    }
+
+    pub fn get_runs_by_ids(&self, ids: &[i64]) -> Result<Vec<RunResult>> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+        let query = format!(
+            "SELECT {} FROM runs WHERE id IN ({}) ORDER BY timestamp ASC",
+            RUNS_SELECT_COLUMNS, placeholders
+        );
+        let mut stmt = conn.prepare(&query)?;
+
+        let params: Vec<&dyn rusqlite::ToSql> =
+            ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+        let run_iter = stmt.query_map(params.as_slice(), Self::map_row_to_run_result)?;
+        let mut results = Vec::new();
+        for run in run_iter {
+            results.push(run?);
+        }
+        Ok(results)
     }
 
     pub fn get_filtered_history(
@@ -486,21 +515,7 @@ impl Db {
     ) -> Result<Vec<RunResult>> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
 
-        let mut query = String::from(
-            "SELECT
-                id, benchmark_id, category, preset_or_version, gpu_mode, score, status,
-                timestamp, duration_secs, avg_cpu_usage, peak_cpu_usage, avg_cpu_temp, peak_cpu_temp,
-                avg_cpu_freq_mhz, peak_cpu_freq_mhz, avg_gpu_usage, peak_gpu_usage, avg_gpu_temp,
-                peak_gpu_temp, avg_gpu_freq_mhz, peak_gpu_freq_mhz, avg_vram_freq_mhz, peak_vram_freq_mhz,
-                avg_gpu_power_w, peak_gpu_power_w, avg_power_w, peak_power_w,
-                avg_ac_power_w, peak_ac_power_w, avg_ram_gb, peak_ram_gb,
-                avg_vram_gb, peak_vram_gb,
-                cpu_throttling, gpu_throttling,
-                system_info_summary, power_profile, log_path,
-                is_methodology, methodology_parent_id, group_name
-            FROM runs
-            WHERE 1=1"
-        );
+        let mut query = format!("SELECT {} FROM runs WHERE 1=1", RUNS_SELECT_COLUMNS);
 
         let mut query_params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
@@ -650,6 +665,42 @@ impl Db {
         self.insert_telemetry_point(run_id, sample)
     }
 
+    pub fn insert_telemetry_batch(&self, run_id: i64, samples: &[TelemetryData]) -> Result<()> {
+        if samples.is_empty() {
+            return Ok(());
+        }
+        let mut conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let tx = conn.transaction()?;
+        {
+            let mut stmt = tx.prepare(
+                "INSERT INTO telemetry_points (run_id, timestamp_ms, cpu_temp, gpu_temp, cpu_usage, gpu_usage, cpu_freq_mhz, gpu_freq_mhz, vram_freq_mhz, power_watt, gpu_power_watt, ac_power_watt, ram_usage_mb, vram_usage_mb, cpu_throttle, gpu_throttle)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            )?;
+            for sample in samples {
+                stmt.execute(params![
+                    run_id,
+                    sample.timestamp,
+                    sample.cpu_temp,
+                    sample.gpu_temp,
+                    sample.cpu_usage,
+                    sample.gpu_usage,
+                    sample.cpu_freq,
+                    sample.gpu_freq_mhz,
+                    sample.vram_freq_mhz,
+                    sample.power_w,
+                    sample.gpu_power_w,
+                    sample.ac_power_w,
+                    sample.ram_usage_mb,
+                    sample.vram_usage_mb,
+                    &sample.cpu_throttle,
+                    &sample.gpu_throttle,
+                ])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
     pub fn get_telemetry_points(&self, run_id: i64) -> Result<Vec<TelemetryData>> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         let mut stmt = conn.prepare("SELECT timestamp_ms, cpu_temp, gpu_temp, cpu_usage, gpu_usage, cpu_freq_mhz, gpu_freq_mhz, vram_freq_mhz, power_watt, gpu_power_watt, ac_power_watt, ram_usage_mb, vram_usage_mb, cpu_throttle, gpu_throttle FROM telemetry_points WHERE run_id = ?1 ORDER BY timestamp_ms ASC")
@@ -734,10 +785,8 @@ impl Db {
         )?;
         let group_iter = stmt.query_map([], |row| row.get(0))?;
         let mut groups = Vec::new();
-        for group in group_iter {
-            if let Ok(name) = group {
-                groups.push(name);
-            }
+        for name in group_iter.flatten() {
+            groups.push(name);
         }
         Ok(groups)
     }

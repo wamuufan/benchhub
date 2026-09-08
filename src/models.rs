@@ -103,7 +103,7 @@ impl BenchmarkProfile {
                 run_cmd: v.run_cmd.clone().unwrap_or_else(|| self.run_cmd.clone()),
                 run_args: v.run_args.clone().unwrap_or_else(|| self.run_args.clone()),
                 score_regex: v.score_regex.clone().or_else(|| self.score_regex.clone()),
-                versions: self.versions.clone(),
+                versions: Vec::new(),
                 default_version: self.default_version.clone(),
                 version: Some(v.version.clone()),
                 archive_type: v.archive_type.clone().or_else(|| self.archive_type.clone()),
@@ -149,7 +149,7 @@ pub struct TelemetryData {
 }
 
 fn default_throttle_str() -> String {
-    "Yok".to_string()
+    "none".to_string()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

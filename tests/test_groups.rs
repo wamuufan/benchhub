@@ -1,8 +1,9 @@
+use anyhow::Result;
 use benchhub::db::Db;
 use benchhub::models::RunResult;
-use anyhow::Result;
 
 #[test]
+#[allow(clippy::field_reassign_with_default)]
 fn test_groups() -> Result<()> {
     let tmp_dir = tempfile::tempdir()?;
     let db_path = tmp_dir.path().join("test_groups.db");
@@ -30,7 +31,7 @@ fn test_groups() -> Result<()> {
     // Verify groups in runs
     let fetch1 = db.get_run_by_id(id1)?.unwrap();
     assert_eq!(fetch1.group_name.as_deref(), Some("Undervolt"));
-    
+
     let fetch2 = db.get_run_by_id(id2)?.unwrap();
     assert_eq!(fetch2.group_name.as_deref(), Some("Undervolt"));
 
@@ -53,7 +54,7 @@ fn test_groups() -> Result<()> {
 
     let groups = db.get_distinct_groups()?;
     assert!(groups.is_empty());
-    
+
     // Ensure runs still exist
     assert!(db.get_run_by_id(id2)?.is_some());
 

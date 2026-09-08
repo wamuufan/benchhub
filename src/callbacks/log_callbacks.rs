@@ -149,24 +149,29 @@ pub fn register_log_callbacks(ui: &AppWindow, app_state: &AppState) {
                 let resolved_path = if log_path_raw.is_empty() {
                     None
                 } else {
+                    let logs_base = data_dir.join("logs");
                     let p = std::path::PathBuf::from(&log_path_raw);
-                    if p.exists() {
-                        Some(p)
-                    } else {
-                        let candidate1 = data_dir.join("logs").join(&log_path_raw);
-                        if candidate1.exists() {
-                            Some(candidate1)
-                        } else if let Some(filename) = p.file_name() {
-                            let candidate2 = data_dir.join("logs").join(filename);
-                            if candidate2.exists() {
-                                Some(candidate2)
-                            } else {
-                                Some(p)
-                            }
-                        } else {
-                            Some(p)
+
+                    let mut found = None;
+                    if let Ok(safe_path) = benchhub::utils::ensure_path_within(&logs_base, &p) {
+                        if safe_path.exists() {
+                            found = Some(safe_path);
                         }
                     }
+
+                    if found.is_none() {
+                        if let Some(filename) = p.file_name() {
+                            let candidate = logs_base.join(filename);
+                            if let Ok(safe_path) =
+                                benchhub::utils::ensure_path_within(&logs_base, &candidate)
+                            {
+                                if safe_path.exists() {
+                                    found = Some(safe_path);
+                                }
+                            }
+                        }
+                    }
+                    found
                 };
 
                 let log_content = match resolved_path {

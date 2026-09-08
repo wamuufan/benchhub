@@ -92,8 +92,8 @@ pub fn t_fmt(key: &str, args: &[&str]) -> String {
 pub fn localize_throttling(s: &str) -> String {
     let trimmed = s.trim();
     if trimmed.is_empty()
+        || trimmed.eq_ignore_ascii_case("none")
         || trimmed == "Yok"
-        || trimmed == "None"
         || trimmed == "-"
         || trimmed == "Hayır"
     {
@@ -103,30 +103,44 @@ pub fn localize_throttling(s: &str) -> String {
     if let (Some(open), Some(close)) = (trimmed.find("(%"), trimmed.find(')')) {
         if open < close {
             let pct = &trimmed[open..=close];
-            if trimmed.contains("Termal") || trimmed.contains("Thermal") {
+            let lower = trimmed.to_lowercase();
+            if lower.contains("termal") || lower.contains("thermal") {
                 return format!("{} {}", t("throttling_thermal"), pct);
-            } else if trimmed.contains("Güç") || trimmed.contains("Power") {
+            } else if lower.contains("güç") || lower.contains("guc") || lower.contains("power") {
                 return format!("{} {}", t("throttling_power"), pct);
+            } else if lower.contains("donanım")
+                || lower.contains("donanim")
+                || lower.contains("hardware")
+            {
+                return format!("{} {}", t("throttling_hardware"), pct);
             }
         }
     } else if let (Some(open), Some(close)) = (trimmed.find('('), trimmed.find(')')) {
         if open < close {
             let inner = &trimmed[open..=close];
-            if trimmed.contains("Termal") || trimmed.contains("Thermal") {
+            let lower = trimmed.to_lowercase();
+            if lower.contains("termal") || lower.contains("thermal") {
                 return format!("{} {}", t("throttling_thermal"), inner);
-            } else if trimmed.contains("Güç") || trimmed.contains("Power") {
+            } else if lower.contains("güç") || lower.contains("guc") || lower.contains("power") {
                 return format!("{} {}", t("throttling_power"), inner);
+            } else if lower.contains("donanım")
+                || lower.contains("donanim")
+                || lower.contains("hardware")
+            {
+                return format!("{} {}", t("throttling_hardware"), inner);
             }
         }
     }
 
-    if trimmed.contains("Termal") || trimmed.contains("Thermal") {
+    let lower = trimmed.to_lowercase();
+    if lower.contains("termal") || lower.contains("thermal") {
         t("throttling_thermal")
-    } else if trimmed.contains("Güç") || trimmed.contains("Power") {
+    } else if lower.contains("güç") || lower.contains("guc") || lower.contains("power") {
         t("throttling_power")
-    } else if trimmed.contains("Donanım") || trimmed.contains("Hardware") {
+    } else if lower.contains("donanım") || lower.contains("donanim") || lower.contains("hardware")
+    {
         t("throttling_hardware")
-    } else if trimmed.contains("Tespit") || trimmed.contains("Detected") {
+    } else if lower.contains("tespit") || lower.contains("detected") {
         t("detected")
     } else {
         trimmed.to_string()
@@ -142,7 +156,15 @@ pub fn localize_power_profile(s: &str) -> String {
     } else if lower.contains("power-saver") || lower.contains("tasarruf") || lower.contains("saver")
     {
         t("profile_power_saver")
-    } else if s.is_empty() || s == "Yok" || s == "None" || s == "-" {
+    } else if lower.contains("metodoloji") || lower.contains("methodology") {
+        t("methodology_badge")
+    } else if s.is_empty()
+        || s == "Yok"
+        || s.eq_ignore_ascii_case("none")
+        || s == "-"
+        || s == "Bilinmiyor"
+        || s.eq_ignore_ascii_case("unknown")
+    {
         t("unknown")
     } else {
         s.to_string()
@@ -150,22 +172,47 @@ pub fn localize_power_profile(s: &str) -> String {
 }
 
 pub fn localize_status(s: &str) -> String {
-    if s.contains("TAMAM") || s.contains("COMPLETED") || s.contains("Başarılı") {
+    let trimmed = s.trim();
+    let lower = trimmed.to_lowercase();
+    if trimmed.contains("TAMAM")
+        || lower.contains("tamam")
+        || lower.contains("completed")
+        || lower.contains("başarılı")
+        || lower.contains("basarili")
+        || lower == "success"
+    {
         t("status_completed")
-    } else if s.contains("HATA") || s.contains("ERROR") || s.contains("Başarısız") {
+    } else if trimmed.contains("HATA")
+        || lower.contains("hata")
+        || lower.contains("error")
+        || lower.contains("başarısız")
+        || lower.contains("basarisiz")
+        || lower.contains("failed")
+        || lower == "fail"
+    {
         t("status_error")
-    } else if s.contains("İPTAL") || s.contains("Durduruldu") || s.contains("CANCEL") {
+    } else if trimmed.contains("İPTAL")
+        || lower.contains("iptal")
+        || lower.contains("durduruldu")
+        || lower.contains("cancel")
+        || lower.contains("stopped")
+    {
         t("status_cancelled")
     } else {
-        s.to_string()
+        trimmed.to_string()
     }
 }
 
 pub fn localize_gpu_mode(s: &str) -> String {
-    match crate::models::GpuMode::from_display_str(s) {
-        crate::models::GpuMode::NvidiaDgpu => t("gpu_mode_nvidia"),
-        crate::models::GpuMode::Integrated => t("gpu_mode_igpu"),
-        crate::models::GpuMode::Auto => t("gpu_mode_default"),
+    let lower = s.trim().to_lowercase();
+    if lower.contains("karma") || lower.contains("mixed") {
+        t("gpu_mode_mixed")
+    } else {
+        match crate::models::GpuMode::from_display_str(s) {
+            crate::models::GpuMode::NvidiaDgpu => t("gpu_mode_nvidia"),
+            crate::models::GpuMode::Integrated => t("gpu_mode_igpu"),
+            crate::models::GpuMode::Auto => t("gpu_mode_default"),
+        }
     }
 }
 
@@ -201,27 +248,71 @@ mod tests {
         assert_eq!(t_lang("ready", "en"), "Ready");
         assert_eq!(localize_throttling("Yok"), "None");
         assert_eq!(localize_throttling("None"), "None");
+        assert_eq!(localize_throttling("none"), "None");
         assert_eq!(localize_throttling("-"), "None");
         assert_eq!(localize_throttling("Termal Kısma"), "Thermal Throttling");
+        assert_eq!(
+            localize_throttling("thermal_throttle"),
+            "Thermal Throttling"
+        );
         assert_eq!(
             localize_throttling("Termal Kısma (%45)"),
             "Thermal Throttling (%45)"
         );
+        assert_eq!(
+            localize_throttling("thermal_throttle (%45)"),
+            "Thermal Throttling (%45)"
+        );
         assert_eq!(localize_throttling("Güç Limiti (%20)"), "Power Limit (%20)");
+        assert_eq!(
+            localize_throttling("power_limit (%20)"),
+            "Power Limit (%20)"
+        );
+        assert_eq!(
+            localize_throttling("Donanım Kısması"),
+            "Hardware Throttling"
+        );
+        assert_eq!(
+            localize_throttling("hardware_throttle"),
+            "Hardware Throttling"
+        );
         assert_eq!(localize_power_profile("performance"), "Performance");
         assert_eq!(localize_power_profile("balanced"), "Balanced");
         assert_eq!(localize_power_profile("power-saver"), "Power Saver");
+        assert_eq!(localize_power_profile("Metodoloji"), "METHODOLOGY");
         assert_eq!(localize_status("TAMAMLANDI"), "COMPLETED");
+        assert_eq!(localize_status("completed"), "COMPLETED");
+        assert_eq!(localize_status("Tamamlandı"), "COMPLETED");
         assert_eq!(localize_status("HATA"), "ERROR");
+        assert_eq!(localize_status("error"), "ERROR");
+        assert_eq!(localize_status("İPTAL"), "CANCELLED");
+        assert_eq!(localize_status("cancelled"), "CANCELLED");
+        assert_eq!(localize_gpu_mode("Karma"), "Mixed");
+        assert_eq!(localize_gpu_mode("mixed"), "Mixed");
+        assert_eq!(
+            localize_gpu_mode("Harici GPU (NVIDIA)"),
+            "Dedicated GPU NVIDIA"
+        );
+        assert_eq!(localize_gpu_mode("Dahili GPU (iGPU)"), "Integrated GPU");
 
         set_language("tr");
         assert_eq!(t("ready"), "Hazır");
         assert_eq!(localize_throttling("Yok"), "Yok");
         assert_eq!(localize_throttling("None"), "Yok");
+        assert_eq!(localize_throttling("none"), "Yok");
         assert_eq!(
             localize_throttling("Termal Kısma (%45)"),
             "Termal Kısma (%45)"
         );
+        assert_eq!(
+            localize_throttling("thermal_throttle (%45)"),
+            "Termal Kısma (%45)"
+        );
         assert_eq!(localize_power_profile("performance"), "Performans");
+        assert_eq!(localize_power_profile("Metodoloji"), "METODOLOJİ");
+        assert_eq!(localize_status("completed"), "TAMAMLANDI");
+        assert_eq!(localize_status("Tamamlandı"), "TAMAMLANDI");
+        assert_eq!(localize_gpu_mode("mixed"), "Karma");
+        assert_eq!(localize_gpu_mode("Karma"), "Karma");
     }
 }

@@ -213,6 +213,8 @@ pub fn spawn_telemetry_worker(
     tokio::spawn(async move {
         let mut last_ui_update = std::time::Instant::now();
         let ui_throttle_interval = std::time::Duration::from_millis(500);
+        let mut buffer = Vec::new();
+        let mut last_db_write = std::time::Instant::now();
 
         while let Some(data) = telemetry_rx.recv().await {
             // Ingest and record samples at full speed without dropping
@@ -225,11 +227,17 @@ pub fn spawn_telemetry_worker(
                     .active_run_id
                     .load(std::sync::atomic::Ordering::Relaxed);
                 if rid > 0 {
-                    let db = app_state.service.db.clone();
-                    let d = data.clone();
-                    tokio::task::spawn_blocking(move || {
-                        let _ = db.insert_telemetry_sample(rid, &d);
-                    });
+                    buffer.push(data.clone());
+                    if buffer.len() >= 10 || last_db_write.elapsed().as_secs() >= 5 {
+                        let db = app_state.service.db.clone();
+                        let batch = std::mem::take(&mut buffer);
+                        tokio::task::spawn_blocking(move || {
+                            let _ = db.insert_telemetry_batch(rid, &batch);
+                        });
+                        last_db_write = std::time::Instant::now();
+                    }
+                } else {
+                    buffer.clear();
                 }
             }
 
@@ -280,6 +288,20 @@ pub fn spawn_telemetry_worker(
                         }
                     }
                 });
+            }
+        }
+
+        if !buffer.is_empty() {
+            let rid = app_state
+                .active_run_id
+                .load(std::sync::atomic::Ordering::Relaxed);
+            if rid > 0 {
+                let db = app_state.service.db.clone();
+                tokio::task::spawn_blocking(move || {
+                    let _ = db.insert_telemetry_batch(rid, &buffer);
+                })
+                .await
+                .unwrap_or(());
             }
         }
     })
@@ -348,12 +370,12 @@ pub fn spawn_terminal_flusher(
                             ui_dirty = true;
 
                             if file_buffer.len() > 8192 {
-                                let to_write = std::mem::take(&mut file_buffer);
                                 if let Some(writer) = opt_writer.as_mut() {
                                     use tokio::io::AsyncWriteExt;
-                                    let _ = writer.write_all(to_write.as_bytes()).await;
+                                    let _ = writer.write_all(file_buffer.as_bytes()).await;
                                     let _ = writer.flush().await;
                                 }
+                                file_buffer.clear();
                             }
                         }
                         crate::state::TerminalMsg::Clear => {
@@ -373,12 +395,12 @@ pub fn spawn_terminal_flusher(
                 }
                 _ = interval.tick() => {
                     if !file_buffer.is_empty() {
-                        let to_write = std::mem::take(&mut file_buffer);
                         if let Some(writer) = opt_writer.as_mut() {
                             use tokio::io::AsyncWriteExt;
-                            let _ = writer.write_all(to_write.as_bytes()).await;
+                            let _ = writer.write_all(file_buffer.as_bytes()).await;
                             let _ = writer.flush().await;
                         }
+                        file_buffer.clear();
                     }
 
                     if ui_dirty {

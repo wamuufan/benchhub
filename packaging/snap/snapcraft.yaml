@@ -13,10 +13,20 @@ parts:
     build-packages:
       - build-essential
       - libsqlite3-dev
+      - pkg-config
+      - libfontconfig1-dev
+      - libx11-dev
+      - libxkbcommon-dev
 
 apps:
   benchhub:
     command: bin/benchhub
     plugs:
+      - opengl
+      - wayland
+      - x11
+      - desktop
+      - desktop-legacy
+      - home
       - network
       - hardware-observe

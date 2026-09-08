@@ -1,19 +1,13 @@
 use benchhub::db::Db;
 use benchhub::models::{GpuMode, HistorySortOrder, RunResult, TelemetryData};
-use std::time::SystemTime;
 use tempfile::tempdir;
 
 #[test]
 fn test_sqlite_db_operations() {
-    let tmp_file = std::env::temp_dir().join(format!(
-        "benchhub_test_{}.sqlite",
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
+    let tmp_dir = tempdir().expect("Failed to create tempdir");
+    let tmp_file = tmp_dir.path().join("test.sqlite");
 
-    let db = Db::new(tmp_file.clone()).expect("Failed to create test db");
+    let db = Db::new(tmp_file).expect("Failed to create test db");
 
     let run1 = RunResult {
         id: 0,
@@ -93,19 +87,12 @@ fn test_sqlite_db_operations() {
         .get_history()
         .expect("Failed to query history after clear");
     assert_eq!(history_after.len(), 0);
-
-    let _ = std::fs::remove_file(tmp_file);
 }
 
 #[test]
 fn test_sqlite_schema_migration() {
-    let tmp_file = std::env::temp_dir().join(format!(
-        "benchhub_migration_test_{}.sqlite",
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
+    let tmp_dir = tempdir().expect("Failed to create tempdir");
+    let tmp_file = tmp_dir.path().join("migration.sqlite");
 
     // 1. Create legacy schema without status, duration_secs, log_path
     {
@@ -206,21 +193,14 @@ fn test_sqlite_schema_migration() {
     assert_eq!(history2[0].preset_or_version, "1080p Extreme");
     assert_eq!(history2[0].status, "Başarılı");
     assert_eq!(history2[0].log_path, "/tmp/new.log");
-
-    let _ = std::fs::remove_file(tmp_file);
 }
 
 #[test]
 fn test_sqlite_filtering_and_deletion() {
-    let tmp_file = std::env::temp_dir().join(format!(
-        "benchhub_filter_test_{}.sqlite",
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
+    let tmp_dir = tempdir().expect("Failed to create tempdir");
+    let tmp_file = tmp_dir.path().join("filter.sqlite");
 
-    let db = Db::new(tmp_file.clone()).expect("Failed to create test db");
+    let db = Db::new(tmp_file).expect("Failed to create test db");
 
     let run_cpu = RunResult {
         id: 0,
@@ -352,21 +332,14 @@ fn test_sqlite_filtering_and_deletion() {
     let remaining = db.get_history().unwrap();
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].id, id_gpu);
-
-    let _ = std::fs::remove_file(tmp_file);
 }
 
 #[test]
 fn test_sqlite_sorting_orders() {
-    let tmp_file = std::env::temp_dir().join(format!(
-        "benchhub_sort_test_{}.sqlite",
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
+    let tmp_dir = tempdir().expect("Failed to create tempdir");
+    let tmp_file = tmp_dir.path().join("sort.sqlite");
 
-    let db = Db::new(tmp_file.clone()).expect("Failed to create test db");
+    let db = Db::new(tmp_file).expect("Failed to create test db");
 
     let run_a = RunResult {
         id: 0,
@@ -507,21 +480,14 @@ fn test_sqlite_sorting_orders() {
         .unwrap();
     assert_eq!(res[0].id, id_b);
     assert_eq!(res[1].id, id_a);
-
-    let _ = std::fs::remove_file(tmp_file);
 }
 
 #[test]
 fn test_db_get_run_by_id() {
-    let tmp_file = std::env::temp_dir().join(format!(
-        "benchhub_get_by_id_{}.sqlite",
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
+    let tmp_dir = tempdir().expect("Failed to create tempdir");
+    let tmp_file = tmp_dir.path().join("get_by_id.sqlite");
 
-    let db = Db::new(tmp_file.clone()).expect("Failed to create test db");
+    let db = Db::new(tmp_file).expect("Failed to create test db");
 
     let run = RunResult {
         id: 0,
@@ -591,8 +557,6 @@ fn test_db_get_run_by_id() {
 
     let non_existent = db.get_run_by_id(99999).unwrap();
     assert!(non_existent.is_none());
-
-    let _ = std::fs::remove_file(tmp_file);
 }
 
 fn create_mock_run(

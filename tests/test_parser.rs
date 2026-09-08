@@ -223,6 +223,7 @@ async fn test_unigine_execution_isolation_and_cwd() {
 
 #[test]
 fn test_is_installed_empty_dir() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
     let tmp_dir = std::env::temp_dir().join(format!(
         "benchhub_test_engine_{}",
         std::time::SystemTime::now()
@@ -234,14 +235,18 @@ fn test_is_installed_empty_dir() {
     let runner_cray = tmp_dir.join("runners").join("cray");
     std::fs::create_dir_all(&runner_cray).unwrap();
 
-    // Empty directory should NOT be reported as installed
-    assert!(!engine.is_installed("cray"));
-    assert!(!engine.is_version_installed("cray", ""));
+    rt.block_on(async {
+        // Empty directory should NOT be reported as installed
+        assert!(!engine.is_installed("cray"));
+        assert!(!engine.is_version_installed_async("cray", "").await);
 
-    // If marker file exists inside, it should be installed
-    std::fs::write(runner_cray.join(".successfully-installed"), b"").unwrap();
-    assert!(engine.is_installed("cray"));
-    assert!(engine.is_version_installed("cray", ""));
+        // If marker file exists inside, it should be installed
+        tokio::fs::write(runner_cray.join(".successfully-installed"), b"")
+            .await
+            .unwrap();
+        assert!(engine.is_installed("cray"));
+        assert!(engine.is_version_installed_async("cray", "").await);
+    });
 
     let _ = std::fs::remove_dir_all(tmp_dir);
 }

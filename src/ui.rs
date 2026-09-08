@@ -7,6 +7,7 @@ use chrono::DateTime;
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::rc::Rc;
 
+#[allow(clippy::too_many_arguments)]
 pub fn format_history_item(
     run: &RunResult,
     is_selected: bool,
@@ -141,24 +142,8 @@ pub fn format_history_item(
     let (localized_name, localized_cat, _) =
         get_localized_profile_info(&run.benchmark_id, &run.benchmark_id, &run.category, "");
 
-    let gpu_mode_display = match benchhub::models::GpuMode::from_display_str(&run.gpu_mode) {
-        benchhub::models::GpuMode::NvidiaDgpu => i18n::t("gpu_mode_nvidia"),
-        benchhub::models::GpuMode::Integrated => i18n::t("gpu_mode_igpu"),
-        benchhub::models::GpuMode::Auto => i18n::t("gpu_mode_default"),
-    };
-
-    let status_display = if run.status.contains("TAMAM") || run.status.contains("COMPLETED") {
-        i18n::t("status_completed")
-    } else if run.status.contains("HATA") || run.status.contains("ERROR") {
-        i18n::t("status_error")
-    } else if run.status.contains("İPTAL")
-        || run.status.contains("Durduruldu")
-        || run.status.contains("CANCEL")
-    {
-        i18n::t("status_cancelled")
-    } else {
-        run.status.clone()
-    };
+    let gpu_mode_display = i18n::localize_gpu_mode(&run.gpu_mode);
+    let status_display = i18n::localize_status(&run.status);
 
     let preset_display = if run.is_methodology {
         String::new()
@@ -167,7 +152,7 @@ pub fn format_history_item(
     };
 
     HistoryItem {
-        id: run.id as i32,
+        id: (run.id.clamp(0, i32::MAX as i64)) as i32,
         benchmark_id: localized_name.into(),
         category: localized_cat.into(),
         preset_or_version: preset_display.into(),
@@ -215,7 +200,7 @@ pub fn format_history_item(
 pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState) {
     let mut can_create = false;
     let mut has_grouped = false;
-    if filter.selected_ids.len() >= 1 {
+    if !filter.selected_ids.is_empty() {
         for &id in &filter.selected_ids {
             if let Ok(Some(r)) = db.get_run_by_id(id) {
                 if r.group_name.is_some() {
@@ -225,27 +210,33 @@ pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState
             }
         }
     }
-    
+
     if filter.selected_ids.len() >= 2 {
-        let mut first_bench_id = None;
-        can_create = true;
+        let mut first_bench_id: Option<String> = None;
+        let mut all_same = true;
         for &id in &filter.selected_ids {
             if let Ok(Some(r)) = db.get_run_by_id(id) {
-                if r.is_methodology { can_create = false; break; }
-                if let Some(ref f_id) = first_bench_id {
-                    if *f_id != r.benchmark_id {
-                        can_create = false;
-                        break;
+                if r.is_methodology || r.methodology_parent_id.is_some() {
+                    all_same = false;
+                    break;
+                }
+                match &first_bench_id {
+                    None => first_bench_id = Some(r.benchmark_id.clone()),
+                    Some(first) => {
+                        if first != &r.benchmark_id {
+                            all_same = false;
+                            break;
+                        }
                     }
-                } else {
-                    first_bench_id = Some(r.benchmark_id.clone());
                 }
             } else {
-                can_create = false;
+                all_same = false;
                 break;
             }
         }
+        can_create = all_same;
     }
+
     ui.set_can_create_methodology(can_create);
     ui.set_has_grouped_selection(has_grouped);
 
@@ -269,43 +260,63 @@ pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState
     ) {
         Ok(runs) => {
             let mut history_items = Vec::new();
-            
+
             // Filter by group if needed
             let filtered_runs: Vec<_> = if let Some(ref g) = filter.selected_group {
-                runs.into_iter().filter(|r| {
-                    if g == "" { r.group_name.is_none() } else { r.group_name.as_deref() == Some(g.as_str()) }
-                }).collect()
+                runs.into_iter()
+                    .filter(|r| {
+                        if g.is_empty() {
+                            r.group_name.is_none()
+                        } else {
+                            r.group_name.as_deref() == Some(g.as_str())
+                        }
+                    })
+                    .collect()
             } else {
                 runs
             };
-            
+
             use std::collections::BTreeMap;
             let mut grouped_runs: BTreeMap<String, Vec<RunResult>> = BTreeMap::new();
             let mut ungrouped_runs: Vec<RunResult> = Vec::new();
-            
+
             for run in filtered_runs {
                 if run.methodology_parent_id.is_some() {
                     continue;
                 }
                 if let Some(ref group_name) = run.group_name {
-                    grouped_runs.entry(group_name.clone()).or_default().push(run);
+                    grouped_runs
+                        .entry(group_name.clone())
+                        .or_default()
+                        .push(run);
                 } else {
                     ungrouped_runs.push(run);
                 }
             }
-            
+
             for (group_name, g_runs) in grouped_runs {
                 let is_expanded = !filter.collapsed_group_names.contains(&group_name);
-                
+
                 // Group Header
-                let mut header_run = RunResult::default();
-                header_run.id = 0;
+                let header_run = RunResult {
+                    id: 0,
+                    ..Default::default()
+                };
                 history_items.push(format_history_item(
                     &header_run,
-                    false, false, false, is_expanded, false, 0, 0,
-                    &group_name, true, false, g_runs.len()
+                    false,
+                    false,
+                    false,
+                    is_expanded,
+                    false,
+                    0,
+                    0,
+                    &group_name,
+                    true,
+                    false,
+                    g_runs.len(),
                 ));
-                
+
                 if is_expanded {
                     for run in g_runs {
                         if run.is_methodology {
@@ -314,16 +325,32 @@ pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState
                             history_items.push(format_history_item(
                                 &run,
                                 filter.selected_ids.contains(&run.id),
-                                true, false, meth_expanded, true, children.len(), 0,
-                                &group_name, false, true, 0
+                                true,
+                                false,
+                                meth_expanded,
+                                true,
+                                children.len(),
+                                0,
+                                &group_name,
+                                false,
+                                true,
+                                0,
                             ));
                             if meth_expanded {
                                 for child in children {
                                     history_items.push(format_history_item(
                                         &child,
                                         filter.selected_ids.contains(&child.id),
-                                        false, true, false, false, 0, 1,
-                                        &group_name, false, true, 0
+                                        false,
+                                        true,
+                                        false,
+                                        false,
+                                        0,
+                                        1,
+                                        &group_name,
+                                        false,
+                                        true,
+                                        0,
                                     ));
                                 }
                             }
@@ -331,14 +358,22 @@ pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState
                             history_items.push(format_history_item(
                                 &run,
                                 filter.selected_ids.contains(&run.id),
-                                false, false, false, false, 0, 0,
-                                &group_name, false, true, 0
+                                false,
+                                false,
+                                false,
+                                false,
+                                0,
+                                0,
+                                &group_name,
+                                false,
+                                true,
+                                0,
                             ));
                         }
                     }
                 }
             }
-            
+
             for run in ungrouped_runs {
                 if run.is_methodology {
                     let children = db.get_methodology_children(run.id).unwrap_or_default();
@@ -346,16 +381,32 @@ pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState
                     history_items.push(format_history_item(
                         &run,
                         filter.selected_ids.contains(&run.id),
-                        true, false, meth_expanded, true, children.len(), 0,
-                        "", false, false, 0
+                        true,
+                        false,
+                        meth_expanded,
+                        true,
+                        children.len(),
+                        0,
+                        "",
+                        false,
+                        false,
+                        0,
                     ));
                     if meth_expanded {
                         for child in children {
                             history_items.push(format_history_item(
                                 &child,
                                 filter.selected_ids.contains(&child.id),
-                                false, true, false, false, 0, 1,
-                                "", false, false, 0
+                                false,
+                                true,
+                                false,
+                                false,
+                                0,
+                                1,
+                                "",
+                                false,
+                                false,
+                                0,
                             ));
                         }
                     }
@@ -363,8 +414,16 @@ pub fn refresh_history_view(ui: &AppWindow, db: &Db, filter: &HistoryFilterState
                     history_items.push(format_history_item(
                         &run,
                         filter.selected_ids.contains(&run.id),
-                        false, false, false, false, 0, 0,
-                        "", false, false, 0
+                        false,
+                        false,
+                        false,
+                        false,
+                        0,
+                        0,
+                        "",
+                        false,
+                        false,
+                        0,
                     ));
                 }
             }

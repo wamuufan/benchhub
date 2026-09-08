@@ -24,6 +24,6 @@ pub mod export;
 pub mod i18n;
 pub mod logging;
 pub mod models;
+pub mod service;
 pub mod telemetry;
 pub mod utils;
-pub mod service;

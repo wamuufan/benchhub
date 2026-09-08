@@ -274,3 +274,29 @@ fn test_download_command_security_validation() {
     assert!(validate_download_command("").is_err());
     assert!(validate_download_command("cmd\0injection").is_err());
 }
+
+#[test]
+fn test_ensure_path_within_symlink_bypass() {
+    use std::os::unix::fs::symlink;
+    let dir = tempdir().unwrap();
+    let base = dir.path().join("base");
+    std::fs::create_dir_all(&base).unwrap();
+
+    let outside = dir.path().join("outside");
+    std::fs::create_dir_all(&outside).unwrap();
+
+    // Create a symlink inside base pointing to outside
+    let sym = base.join("sym");
+    symlink(&outside, &sym).unwrap();
+
+    // Now try to resolve a non-existent file inside the symlink
+    let target = sym.join("new_file.txt");
+
+    // ensure_path_within should resolve the symlink and reject it because it's outside base
+    let result = ensure_path_within(&base, &target);
+    assert!(
+        result.is_err(),
+        "Symlink traversal bypass was successful! Result: {:?}",
+        result
+    );
+}

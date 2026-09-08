@@ -52,8 +52,7 @@ impl BenchHubService {
     pub async fn clean_all_runners(&self) -> anyhow::Result<()> {
         let runners_dir = self.data_dir.join("runners");
         if runners_dir.exists() {
-            let safe_runners_dir =
-                crate::utils::ensure_path_within(&self.data_dir, &runners_dir)?;
+            let safe_runners_dir = crate::utils::ensure_path_within(&self.data_dir, &runners_dir)?;
             tokio::fs::remove_dir_all(&safe_runners_dir).await?;
             tokio::fs::create_dir_all(&safe_runners_dir).await?;
         }
@@ -123,10 +122,9 @@ impl BenchHubService {
             anyhow::bail!("En az 2 test seçilmelidir.");
         }
 
-        let mut runs = Vec::new();
-        for id in run_ids {
-            let run = self.db.get_run_by_id(*id)?.ok_or_else(|| anyhow::anyhow!("Test bulunamadı: {}", id))?;
-            runs.push(run);
+        let runs = self.db.get_runs_by_ids(run_ids)?;
+        if runs.len() != run_ids.len() {
+            anyhow::bail!("Bazı testler bulunamadı.");
         }
 
         let benchmark_id = runs[0].benchmark_id.clone();
@@ -162,8 +160,8 @@ impl BenchHubService {
         let mut peak_ram_gb = 0.0_f32;
         let mut peak_vram_gb = 0.0_f32;
 
-        let mut cpu_throttling = "Yok".to_string();
-        let mut gpu_throttling = "Yok".to_string();
+        let mut cpu_throttling = "none".to_string();
+        let mut gpu_throttling = "none".to_string();
 
         for run in &runs {
             if let Some(s) = run.score {
@@ -196,29 +194,48 @@ impl BenchHubService {
             peak_ram_gb = peak_ram_gb.max(run.peak_ram_gb);
             peak_vram_gb = peak_vram_gb.max(run.peak_vram_gb);
 
-            if run.cpu_throttling != "Yok" { cpu_throttling = run.cpu_throttling.clone(); }
-            if run.gpu_throttling != "Yok" { gpu_throttling = run.gpu_throttling.clone(); }
+            if run.cpu_throttling != "Yok"
+                && run.cpu_throttling != "none"
+                && !run.cpu_throttling.is_empty()
+                && run.cpu_throttling != "-"
+            {
+                cpu_throttling = run.cpu_throttling.clone();
+            }
+            if run.gpu_throttling != "Yok"
+                && run.gpu_throttling != "none"
+                && !run.gpu_throttling.is_empty()
+                && run.gpu_throttling != "-"
+            {
+                gpu_throttling = run.gpu_throttling.clone();
+            }
         }
 
         let n = runs.len() as f32;
-        let score = if score_count > 0 { Some(score_sum / score_count as f64) } else { None };
-        
+        let score = if score_count > 0 {
+            Some(score_sum / score_count as f64)
+        } else {
+            None
+        };
+
         let gpu_mode = if runs.iter().all(|r| r.gpu_mode == runs[0].gpu_mode) {
             runs[0].gpu_mode.clone()
         } else {
-            "Karma".to_string()
+            "mixed".to_string()
         };
 
         let timestamp = chrono::Utc::now().timestamp();
-        
+
         let log_dir = self.data_dir.join("logs");
         std::fs::create_dir_all(&log_dir)?;
         let log_path = log_dir.join(format!("methodology_{}.txt", timestamp));
-        
+
         let mut log_content = String::new();
         log_content.push_str(&format!("Methodology ({})\n", benchmark_id));
         for run in &runs {
-            log_content.push_str(&format!("ID: {}, Date: {}, Score: {:?}\n", run.id, run.timestamp, run.score));
+            log_content.push_str(&format!(
+                "ID: {}, Date: {}, Score: {:?}\n",
+                run.id, run.timestamp, run.score
+            ));
         }
         std::fs::write(&log_path, log_content)?;
 
@@ -229,7 +246,7 @@ impl BenchHubService {
             preset_or_version: format!("{} Test Ortalaması", runs.len()),
             gpu_mode,
             score,
-            status: "Tamamlandı".to_string(),
+            status: "completed".to_string(),
             timestamp,
             duration_secs: duration_sum / n,
             avg_cpu_usage: avg_cpu_usage_sum / n,
@@ -272,7 +289,7 @@ impl BenchHubService {
     }
 
     pub fn get_methodology_children(&self, methodology_id: i64) -> anyhow::Result<Vec<RunResult>> {
-        Ok(self.db.get_methodology_children(methodology_id)?)
+        self.db.get_methodology_children(methodology_id)
     }
 
     pub fn group_runs(&self, run_ids: &[i64], group_name: &str) -> anyhow::Result<()> {

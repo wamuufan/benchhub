@@ -52,9 +52,9 @@ impl BenchmarkEngine {
                 handle.block_on(async { self.get_active_runner_dir_async(id, version).await })
             })
         } else {
-            tokio::runtime::Runtime::new()
-                .unwrap()
-                .block_on(async { self.get_active_runner_dir_async(id, version).await })
+            anyhow::bail!(
+                "get_active_runner_dir must be called from within a Tokio runtime context."
+            );
         }
     }
 
@@ -194,9 +194,7 @@ impl BenchmarkEngine {
                 handle.block_on(async { self.is_version_installed_async(id, version).await })
             })
         } else {
-            tokio::runtime::Runtime::new()
-                .unwrap()
-                .block_on(async { self.is_version_installed_async(id, version).await })
+            false
         }
     }
 
@@ -339,6 +337,84 @@ impl BenchmarkEngine {
         Ok(())
     }
 
+    async fn execute_command_with_output<F>(
+        mut command: tokio::process::Command,
+        mut on_output: F,
+    ) -> Result<()>
+    where
+        F: FnMut(String) + Send,
+    {
+        command.process_group(0);
+        command.stdin(Stdio::null());
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let mut child = command.spawn().context("Kurulum komutu başlatılamadı")?;
+
+        let stdout = child.stdout.take().context("Stdout açılamadı")?;
+        let stderr = child.stderr.take().context("Stderr açılamadı")?;
+
+        let (out_tx, mut out_rx) = tokio::sync::mpsc::channel::<String>(1024);
+
+        let out_tx_stdout = out_tx.clone();
+        let stdout_task = tokio::spawn(async move {
+            let mut reader = BufReader::new(stdout).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                if out_tx_stdout.send(line).await.is_err() {
+                    break;
+                }
+            }
+        });
+
+        let out_tx_stderr = out_tx.clone();
+        let stderr_task = tokio::spawn(async move {
+            let mut reader = BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                if out_tx_stderr.send(line).await.is_err() {
+                    break;
+                }
+            }
+        });
+
+        drop(out_tx);
+
+        let mut exit_status = None;
+
+        loop {
+            tokio::select! {
+                status_res = child.wait(), if exit_status.is_none() => {
+                    exit_status = status_res.ok();
+                }
+                maybe_line = out_rx.recv() => {
+                    match maybe_line {
+                        Some(l) => {
+                            on_output(format!("{}\n", l));
+                        }
+                        None => {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        let _ = tokio::time::timeout(tokio::time::Duration::from_millis(500), async {
+            let _ = tokio::join!(stdout_task, stderr_task);
+        })
+        .await;
+
+        let status = match exit_status {
+            Some(st) => st,
+            None => child.wait().await?,
+        };
+
+        if !status.success() {
+            anyhow::bail!("Kurulum başarısız oldu (çıkış kodu: {})", status);
+        }
+
+        Ok(())
+    }
+
     #[tracing::instrument(skip_all)]
     pub async fn install_version<F>(
         &self,
@@ -366,129 +442,82 @@ impl BenchmarkEngine {
             .with_context(|| format!("Failed to create runner directory {:?}", runner_dir))?;
 
         let res: Result<()> = async {
-            macro_rules! run_cmd {
-                ($command:expr) => {
-                    {
-                        let mut command = $command;
-                        command.process_group(0);
-                        command.stdin(Stdio::null());
-                        command.stdout(Stdio::piped());
-                        command.stderr(Stdio::piped());
-
-                        let mut child = command.spawn().context("Kurulum komutu başlatılamadı")?;
-
-                        let stdout = child.stdout.take().context("Stdout açılamadı")?;
-                        let stderr = child.stderr.take().context("Stderr açılamadı")?;
-
-                        let (out_tx, mut out_rx) = tokio::sync::mpsc::channel::<String>(1024);
-
-                        let out_tx_stdout = out_tx.clone();
-                        let stdout_task = tokio::spawn(async move {
-                            let mut reader = BufReader::new(stdout).lines();
-                            while let Ok(Some(line)) = reader.next_line().await {
-                                if out_tx_stdout.send(line).await.is_err() {
-                                    break;
-                                }
-                            }
-                        });
-
-                        let out_tx_stderr = out_tx.clone();
-                        let stderr_task = tokio::spawn(async move {
-                            let mut reader = BufReader::new(stderr).lines();
-                            while let Ok(Some(line)) = reader.next_line().await {
-                                if out_tx_stderr.send(line).await.is_err() {
-                                    break;
-                                }
-                            }
-                        });
-
-                        drop(out_tx);
-
-                        let mut exit_status = None;
-
-                        loop {
-                            tokio::select! {
-                                status_res = child.wait(), if exit_status.is_none() => {
-                                    exit_status = status_res.ok();
-                                }
-                                maybe_line = out_rx.recv() => {
-                                    match maybe_line {
-                                        Some(l) => {
-                                            on_output(format!("{}\n", l));
-                                        }
-                                        None => {
-                                            break;
-                                        }
-                                    }
-                                }
-                                _ = tokio::time::sleep(tokio::time::Duration::from_millis(400)), if exit_status.is_some() => {
-                                    break;
-                                }
-                            }
-                        }
-
-                        stdout_task.abort();
-                        stderr_task.abort();
-
-                        let status = match exit_status {
-                            Some(st) => st,
-                            None => child.wait().await?,
-                        };
-
-                        if !status.success() {
-                            anyhow::bail!("Kurulum başarısız oldu (çıkış kodu: {})", status);
-                        }
-                    }
-                }
-            }
-
             let is_run;
 
             if let Some(cmd_str) = &effective_profile.download_cmd {
                 Self::validate_download_command(cmd_str)?;
                 is_run = false;
-                on_output(format!("[BenchHub] {}: {}\n", crate::i18n::t("status_installing_log"), effective_profile.name));
+                on_output(format!(
+                    "[BenchHub] {}: {}\n",
+                    crate::i18n::t("status_installing_log"),
+                    effective_profile.name
+                ));
                 let mut command = Command::new("sh");
                 command.arg("-c").arg(cmd_str).current_dir(&runner_dir);
                 inject_ssl_env(&mut command, &self.base_dir).await;
-                run_cmd!(command);
+                Self::execute_command_with_output(command, &mut on_output).await?;
             } else if let Some(ref url) = effective_profile.download_url {
-                is_run = effective_profile.archive_type.as_deref() == Some("run") || url.ends_with(".run");
+                is_run = effective_profile.archive_type.as_deref() == Some("run")
+                    || url.ends_with(".run");
                 let url_path = url.split('?').next().unwrap_or(url);
                 let run_filename = url_path.rsplit('/').next().unwrap_or("package.run");
-                
-                if url.contains('\'') || url.contains('"') || url.contains(' ') || url.contains(';') || url.contains('&') {
+
+                if url.contains('\'')
+                    || url.contains('"')
+                    || url.contains(' ')
+                    || url.contains(';')
+                    || url.contains('&')
+                {
                     anyhow::bail!("Geçersiz karakterler içeren URL: {}", url);
                 }
-                if run_filename.contains('/') || run_filename.contains('\\') || run_filename.is_empty() {
+                if run_filename.contains('/')
+                    || run_filename.contains('\\')
+                    || run_filename.is_empty()
+                {
                     anyhow::bail!("URL'den çıkarılan dosya adı geçersiz: {}", run_filename);
                 }
 
                 let extracted_dir = runner_dir.join("extracted");
                 tokio::fs::create_dir_all(&extracted_dir)
                     .await
-                    .with_context(|| format!("Failed to create extracted directory {:?}", extracted_dir))?;
+                    .with_context(|| {
+                        format!("Failed to create extracted directory {:?}", extracted_dir)
+                    })?;
 
-                on_output(format!("[BenchHub] {}: {}\n", crate::i18n::t("status_installing_log"), effective_profile.name));
+                on_output(format!(
+                    "[BenchHub] {}: {}\n",
+                    crate::i18n::t("status_installing_log"),
+                    effective_profile.name
+                ));
 
                 let mut wget = Command::new("wget");
-                wget.args(["-nv", "-c", url, "-O", run_filename]).current_dir(&runner_dir);
+                wget.args(["-nv", "-c", url, "-O", run_filename])
+                    .current_dir(&runner_dir);
                 inject_ssl_env(&mut wget, &self.base_dir).await;
-                run_cmd!(wget);
+                Self::execute_command_with_output(wget, &mut on_output).await?;
 
                 if is_run {
                     let mut chmod = Command::new("chmod");
                     chmod.args(["+x", run_filename]).current_dir(&runner_dir);
-                    run_cmd!(chmod);
+                    Self::execute_command_with_output(chmod, &mut on_output).await?;
 
                     let mut sh_run = Command::new("sh");
-                    sh_run.arg(format!("./{}", run_filename))
-                        .args(["--accept", "--noexec", "--target", &extracted_dir.to_string_lossy()])
+                    sh_run
+                        .arg(format!("./{}", run_filename))
+                        .args([
+                            "--accept",
+                            "--noexec",
+                            "--target",
+                            &extracted_dir.to_string_lossy(),
+                        ])
                         .current_dir(&runner_dir);
-                    run_cmd!(sh_run);
+                    Self::execute_command_with_output(sh_run, &mut on_output).await?;
                 }
             } else {
-                anyhow::bail!("Kurulum komutu veya indirme bağlantısı tanımlanmamış: {}", effective_profile.name);
+                anyhow::bail!(
+                    "Kurulum komutu veya indirme bağlantısı tanımlanmamış: {}",
+                    effective_profile.name
+                );
             }
 
             // Set executable permissions on target binaries
@@ -522,9 +551,14 @@ impl BenchmarkEngine {
 
             let _ = ensure_executable_permissions(&runner_dir).await;
             let _ = tokio::fs::write(runner_dir.join(".successfully-installed"), "").await;
-            on_output(format!("[BenchHub] {}: {}\n", crate::i18n::t("status_install_success_log"), effective_profile.name));
+            on_output(format!(
+                "[BenchHub] {}: {}\n",
+                crate::i18n::t("status_install_success_log"),
+                effective_profile.name
+            ));
             Ok(())
-        }.await;
+        }
+        .await;
 
         if res.is_err() {
             if let Ok(safe_dir) = ensure_path_within(&self.get_runners_dir(), &runner_dir) {
@@ -885,8 +919,10 @@ impl BenchmarkEngine {
             }
         }
 
-        stdout_task.abort();
-        stderr_task.abort();
+        let _ = tokio::time::timeout(tokio::time::Duration::from_millis(500), async {
+            let _ = tokio::join!(stdout_task, stderr_task);
+        })
+        .await;
 
         if let Some(f) = &mut log_file {
             use std::io::Write;
@@ -1321,40 +1357,15 @@ pub fn find_system_ca_dir() -> Option<PathBuf> {
 
 pub async fn ensure_ssl_shim(base_dir: &Path) -> Option<PathBuf> {
     let shim_path = base_dir.join("libssl_shim.so");
-    let src_c = Path::new("src/ssl_shim.c");
-    if tokio::fs::try_exists(src_c).await.unwrap_or(false)
-        && !tokio::fs::try_exists(&shim_path).await.unwrap_or(false)
-    {
-        let shim_path_clone = shim_path.clone();
-        let built = tokio::task::spawn_blocking(move || {
-            std::process::Command::new("gcc")
-                .args([
-                    "-shared",
-                    "-fPIC",
-                    "-O2",
-                    "src/ssl_shim.c",
-                    "-o",
-                    shim_path_clone.to_str().unwrap_or("libssl_shim.so"),
-                    "-ldl",
-                ])
-                .status()
-                .map(|st| st.success())
-                .unwrap_or(false)
-        })
-        .await
-        .unwrap_or(false);
-        if built {
-            return Some(shim_path);
-        }
-    }
     if tokio::fs::try_exists(&shim_path).await.unwrap_or(false) {
         return Some(shim_path);
     }
-    let local_shim = Path::new("libssl_shim.so");
-    if tokio::fs::try_exists(local_shim).await.unwrap_or(false) {
-        let _ = tokio::fs::copy(local_shim, &shim_path).await;
+
+    let embedded_shim = include_bytes!(concat!(env!("OUT_DIR"), "/libssl_shim.so"));
+    if tokio::fs::write(&shim_path, embedded_shim).await.is_ok() {
         return Some(shim_path);
     }
+
     None
 }
 

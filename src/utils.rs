@@ -136,12 +136,27 @@ pub fn ensure_path_within(base_dir: &Path, target: &Path) -> Result<PathBuf> {
         normalize_path(&base_norm.join(target))
     };
 
-    // If both exist on disk, canonicalize to resolve symlinks
-    let (base_resolved, target_resolved) =
-        match (base_norm.canonicalize(), target_norm.canonicalize()) {
-            (Ok(b), Ok(t)) => (b, t),
-            _ => (base_norm, target_norm),
-        };
+    let base_resolved = base_norm.canonicalize().unwrap_or(base_norm);
+
+    let mut current = target_norm.clone();
+    let mut missing = Vec::new();
+    while !current.exists() {
+        if let Some(parent) = current.parent() {
+            if let Some(file_name) = current.file_name() {
+                missing.push(file_name.to_os_string());
+                current = parent.to_path_buf();
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    let mut target_resolved = current.canonicalize().unwrap_or(current);
+    for comp in missing.into_iter().rev() {
+        target_resolved.push(comp);
+    }
 
     if !target_resolved.starts_with(&base_resolved) {
         bail!(
