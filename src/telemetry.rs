@@ -266,15 +266,15 @@ impl NvmlContext {
             unsafe {
                 if get_throttle(self.device, &mut reasons) == 0 {
                     if (reasons & 0x0060) != 0 {
-                        return Some("Termal Kısma".to_string());
+                        return Some("thermal_throttle".to_string());
                     }
                     if (reasons & 0x0084) != 0 {
-                        return Some("Güç Limiti".to_string());
+                        return Some("power_limit".to_string());
                     }
                     if (reasons & 0x0008) != 0 {
-                        return Some("Donanım Kısması".to_string());
+                        return Some("hardware_throttle".to_string());
                     }
-                    return Some("Yok".to_string());
+                    return Some("none".to_string());
                 }
             }
         }
@@ -664,9 +664,9 @@ impl TelemetryEngine {
             }
         }
         if gpu_temp >= 87.0 {
-            "Termal Kısma".to_string()
+            "thermal_throttle".to_string()
         } else {
-            "Yok".to_string()
+            "none".to_string()
         }
     }
 
@@ -675,15 +675,15 @@ impl TelemetryEngine {
             if let Ok(s) = fs::read_to_string(p) {
                 if let Ok(state) = s.trim().parse::<u32>() {
                     if state > 0 {
-                        return "Termal Kısma".to_string();
+                        return "thermal_throttle".to_string();
                     }
                 }
             }
         }
         if cpu_temp >= 93.0 {
-            "Termal Kısma".to_string()
+            "thermal_throttle".to_string()
         } else {
-            "Yok".to_string()
+            "none".to_string()
         }
     }
 
@@ -1270,41 +1270,45 @@ pub fn calculate_telemetry_summary(samples: &[TelemetryData]) -> TelemetrySummar
 
     let cpu_thermal_count = samples
         .iter()
-        .filter(|s| s.cpu_throttle.contains("Termal"))
+        .filter(|s| s.cpu_throttle.contains("Termal") || s.cpu_throttle.contains("thermal"))
         .count();
     let cpu_throttling = if cpu_thermal_count > 0 {
         let pct = ((cpu_thermal_count as f32 / count) * 100.0).round() as u32;
-        format!("Termal Kısma (%{})", pct)
-    } else if samples
-        .iter()
-        .any(|s| !s.cpu_throttle.is_empty() && s.cpu_throttle != "Yok" && s.cpu_throttle != "-")
-    {
-        "Tespit Edildi".to_string()
+        format!("thermal_throttle (%{})", pct)
+    } else if samples.iter().any(|s| {
+        !s.cpu_throttle.is_empty()
+            && s.cpu_throttle != "Yok"
+            && s.cpu_throttle != "none"
+            && s.cpu_throttle != "-"
+    }) {
+        "detected".to_string()
     } else {
-        "Yok".to_string()
+        "none".to_string()
     };
 
     let gpu_thermal_count = samples
         .iter()
-        .filter(|s| s.gpu_throttle.contains("Termal"))
+        .filter(|s| s.gpu_throttle.contains("Termal") || s.gpu_throttle.contains("thermal"))
         .count();
     let gpu_power_count = samples
         .iter()
-        .filter(|s| s.gpu_throttle.contains("Güç"))
+        .filter(|s| s.gpu_throttle.contains("Güç") || s.gpu_throttle.contains("power"))
         .count();
     let gpu_throttling = if gpu_thermal_count > 0 {
         let pct = ((gpu_thermal_count as f32 / count) * 100.0).round() as u32;
-        format!("Termal Kısma (%{})", pct)
+        format!("thermal_throttle (%{})", pct)
     } else if gpu_power_count > 0 {
         let pct = ((gpu_power_count as f32 / count) * 100.0).round() as u32;
-        format!("Güç Limiti (%{})", pct)
-    } else if samples
-        .iter()
-        .any(|s| !s.gpu_throttle.is_empty() && s.gpu_throttle != "Yok" && s.gpu_throttle != "-")
-    {
-        "Tespit Edildi".to_string()
+        format!("power_limit (%{})", pct)
+    } else if samples.iter().any(|s| {
+        !s.gpu_throttle.is_empty()
+            && s.gpu_throttle != "Yok"
+            && s.gpu_throttle != "none"
+            && s.gpu_throttle != "-"
+    }) {
+        "detected".to_string()
     } else {
-        "Yok".to_string()
+        "none".to_string()
     };
 
     TelemetrySummary {

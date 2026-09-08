@@ -1,0 +1,167 @@
+import { Theme } from "../theme.slint";
+import { AppButton } from "../components/app_button.slint";
+import { Lang } from "../types.slint";
+
+export component ConfirmDialog inherits Rectangle {
+    background: #000000bb;
+    width: 100%;
+    height: 100%;
+    z: 9999;
+
+    in-out property <string> dialog_title;
+    in-out property <string> dialog_name;
+    in-out property <string> dialog_size;
+    in-out property <string> dialog_desc;
+    in-out property <string> dialog_confirm_btn_text;
+    in-out property <string> dialog_action_type;
+    in-out property <string> dialog_target_id;
+    in-out property <string> dialog_target_version;
+
+    callback cancel_dialog();
+    callback confirm_dialog(string, string, string);
+
+    TouchArea {}
+
+    Rectangle {
+        width: min(500px, parent.width * 0.9);
+        height: 250px;
+        background: Theme.surface;
+        border-radius: Theme.radius-md;
+        border-width: 1px;
+        border-color: Theme.border;
+
+        VerticalLayout {
+            padding: Theme.space-lg;
+            spacing: Theme.space-md;
+
+            // 1. Header (İki Yana Yaslı Mimari)
+            HorizontalLayout {
+                alignment: space-between;
+
+                // Sol: İkon + Başlık
+                HorizontalLayout {
+                    spacing: Theme.space-sm;
+                    alignment: start;
+
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 32px;
+                            height: 32px;
+                            border-radius: 16px;
+                            background: Theme.danger.darker(0.6);
+                            border-width: 1px;
+                            border-color: Theme.danger;
+
+                            Image {
+                                source: @image-url("../../resources/icons/warning.svg");
+                                width: 16px;
+                                height: 16px;
+                                colorize: Theme.danger;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 2px;
+
+                        Text {
+                            text: root.dialog_title;
+                            font-size: 15px;
+                            font-weight: 700;
+                            color: Theme.text-main;
+                            horizontal-alignment: left;
+                        }
+
+                        if root.dialog_name != "": Text {
+                            text: root.dialog_name;
+                            font-size: 12px;
+                            font-weight: 600;
+                            color: Theme.primary;
+                            horizontal-alignment: left;
+                        }
+                    }
+                }
+
+                // Sağ: Kapsam / Rozet
+                if root.dialog_size != "": VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        background: Theme.bg-dark;
+                        border-radius: Theme.radius-sm;
+                        border-width: 1px;
+                        border-color: Theme.border;
+                        height: 26px;
+
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            padding-right: 8px;
+                            alignment: center;
+
+                            Text {
+                                text: Lang.t("scope", Lang.current) + ": " + root.dialog_size;
+                                font-size: 11px;
+                                font-weight: 600;
+                                color: Theme.text-muted;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Divider
+            Rectangle { height: 1px; background: Theme.border; }
+
+            // 2. Body (Açıklama Alanı)
+            Rectangle {
+                vertical-stretch: 1;
+                background: Theme.bg-dark;
+                border-radius: Theme.radius-sm;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                VerticalLayout {
+                    padding: Theme.space-md;
+                    alignment: center;
+
+                    Text {
+                        text: root.dialog_desc;
+                        font-size: 13px;
+                        color: Theme.text-muted;
+                        wrap: word-wrap;
+                        horizontal-alignment: left;
+                    }
+                }
+            }
+
+            // Divider
+            Rectangle { height: 1px; background: Theme.border; }
+
+            // 3. Footer (Sağa Yaslı Butonlar)
+            HorizontalLayout {
+                spacing: Theme.space-sm;
+                alignment: end;
+
+                AppButton {
+                    text: Lang.t("cancel", Lang.current);
+                    variant: "secondary";
+                    button_height: 32px;
+                    padding_x: 16px;
+                    clicked => { root.cancel_dialog(); }
+                }
+
+                AppButton {
+                    text: root.dialog_confirm_btn_text;
+                    variant: "danger";
+                    button_height: 32px;
+                    padding_x: 16px;
+                    clicked => { root.confirm_dialog(root.dialog_action_type, root.dialog_target_id, root.dialog_target_version); }
+                }
+            }
+        }
+    }
+}

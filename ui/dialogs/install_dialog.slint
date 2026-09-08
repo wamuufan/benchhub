@@ -1,0 +1,357 @@
+import { ScrollView, CheckBox } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { AppButton } from "../components/app_button.slint";
+import { StatusBadge } from "../components/status_badge.slint";
+import { Lang } from "../types.slint";
+
+export component InstallDialog inherits Rectangle {
+    background: #000000bb;
+    width: 100%;
+    height: 100%;
+    z: 9999;
+
+    in-out property <string> install_dialog_title;
+    in-out property <string> install_dialog_category;
+    in-out property <string> install_dialog_size;
+    in-out property <string> install_dialog_status;
+    in-out property <bool> is_installing;
+    in-out property <bool> install_finished;
+    in-out property <bool> install_success;
+    in-out property <string> install_dialog_desc;
+    in-out property <bool> show_install_eula;
+    in-out property <string> install_dialog_eula;
+    in-out property <string> install_dialog_name;
+    in-out property <bool> install_eula_accepted;
+    in-out property <bool> install_liability_accepted;
+    in-out property <string> install_dialog_log;
+    in-out property <string> install_target_id;
+    in-out property <string> install_target_version;
+
+    callback start_install(string, string);
+    callback close_install_dialog();
+
+    TouchArea {}
+
+    Rectangle {
+        width: min(620px, parent.width * 0.92);
+        height: min(540px, parent.height * 0.90);
+        background: Theme.surface;
+        border-radius: Theme.radius-md;
+        border-width: 1px;
+        border-color: Theme.border;
+
+        VerticalLayout {
+            padding: Theme.space-lg;
+            spacing: Theme.space-md;
+
+            // 1. Header (İki Yana Yaslı)
+            HorizontalLayout {
+                alignment: space-between;
+
+                // Sol: İkon + Başlık
+                HorizontalLayout {
+                    spacing: Theme.space-sm;
+                    alignment: start;
+
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 32px;
+                            height: 32px;
+                            border-radius: 16px;
+                            background: Theme.primary.darker(0.6);
+                            border-width: 1px;
+                            border-color: Theme.primary;
+
+                            Image {
+                                source: @image-url("../../resources/icons/package.svg");
+                                width: 16px;
+                                height: 16px;
+                                colorize: Theme.primary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 2px;
+
+                        Text {
+                            text: root.install_dialog_title;
+                            font-size: 15px;
+                            font-weight: 700;
+                            color: Theme.text-main;
+                            horizontal-alignment: left;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: start;
+
+                            Text {
+                                text: root.install_dialog_category;
+                                font-size: 11px;
+                                font-weight: 600;
+                                color: Theme.primary;
+                            }
+
+                            Text {
+                                text: "•";
+                                font-size: 11px;
+                                color: Theme.text-muted;
+                            }
+
+                            Text {
+                                text: Lang.t("download_size", Lang.current) + ": " + root.install_dialog_size;
+                                font-size: 11px;
+                                color: Theme.text-muted;
+                            }
+                        }
+                    }
+                }
+
+                // Sağ: Durum Rozeti
+                VerticalLayout {
+                    alignment: center;
+                    StatusBadge {
+                        text: root.install_dialog_status;
+                        status: root.is_installing ? "warning" : (root.install_finished ? (root.install_success ? "success" : "danger") : "primary");
+                    }
+                }
+            }
+
+            Rectangle { height: 1px; background: Theme.border; }
+
+            // 2. Açıklama
+            if root.install_dialog_desc != "": Text {
+                text: root.install_dialog_desc;
+                font-size: 12px;
+                color: Theme.text-muted;
+                wrap: word-wrap;
+                horizontal-alignment: left;
+            }
+
+            // 3. İçerik Alanı: Kurulum öncesi (EULA & Onay) veya Kurulum anı (Terminal Log)
+            if !root.is_installing && !root.install_finished: VerticalLayout {
+                vertical-stretch: 1;
+                spacing: Theme.space-sm;
+
+                // EULA Metin Kutusu (Sadece "EULA'yı Göster" aktifken görünür)
+                if root.show_install_eula: Rectangle {
+                    vertical-stretch: 1;
+                    background: #0b0d13;
+                    border-radius: Theme.radius-sm;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                    clip: true;
+
+                    ScrollView {
+                        width: 100%;
+                        height: 100%;
+
+                        VerticalLayout {
+                            padding: 12px;
+                            spacing: 6px;
+
+                            Text {
+                                text: Lang.t("eula_title", Lang.current);
+                                font-size: 12px;
+                                font-weight: 700;
+                                color: Theme.text-main;
+                            }
+
+                            Text {
+                                text: root.install_dialog_eula;
+                                font-family: "monospace";
+                                font-size: 11px;
+                                color: #d1d5db;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+                }
+
+                // EULA Kapalıyken Bilgi Kutusu
+                if !root.show_install_eula: Rectangle {
+                    vertical-stretch: 1;
+                    background: Theme.bg-dark;
+                    border-radius: Theme.radius-sm;
+                    border-width: 1px;
+                    border-color: Theme.border;
+
+                    VerticalLayout {
+                        padding: Theme.space-md;
+                        spacing: Theme.space-sm;
+                        alignment: center;
+
+                        Text {
+                            text: root.install_dialog_desc != "" ? root.install_dialog_desc : root.install_dialog_name;
+                            font-size: 13px;
+                            color: Theme.text-main;
+                            wrap: word-wrap;
+                            horizontal-alignment: center;
+                        }
+
+                        Text {
+                            text: Lang.t("download_size", Lang.current) + ": " + root.install_dialog_size;
+                            font-size: 12px;
+                            color: Theme.text-muted;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+
+                // EULA Onay ve Göster/Gizle Şeridi
+                Rectangle {
+                    background: Theme.bg-dark;
+                    border-radius: Theme.radius-sm;
+                    border-width: 1px;
+                    border-color: root.install_eula_accepted ? Theme.primary.darker(0.3) : Theme.border;
+
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        padding-top: 8px;
+                        padding-bottom: 8px;
+                        spacing: Theme.space-sm;
+                        alignment: space-between;
+
+                        // Sol: Checkbox + Onay Metni
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 8px;
+                            alignment: start;
+                            HorizontalLayout {
+                                spacing: 8px;
+
+                                VerticalLayout {
+                                    alignment: center;
+                                    CheckBox {
+                                        checked: root.install_eula_accepted;
+                                        toggled => { root.install_eula_accepted = !root.install_eula_accepted; }
+                                    }
+                                }
+
+                                VerticalLayout {
+                                    alignment: center;
+                                    horizontal-stretch: 1;
+                                    Text {
+                                        text: Lang.t("eula_checkbox", Lang.current);
+                                        font-size: 12px;
+                                        font-weight: 500;
+                                        color: root.install_eula_accepted ? Theme.text-main : Theme.text-muted;
+                                        wrap: word-wrap;
+                                    }
+                                }
+                            }
+                            HorizontalLayout {
+                                spacing: 8px;
+
+                                VerticalLayout {
+                                    alignment: center;
+                                    CheckBox {
+                                        checked: root.install_liability_accepted;
+                                        toggled => { root.install_liability_accepted = !root.install_liability_accepted; }
+                                    }
+                                }
+
+                                VerticalLayout {
+                                    alignment: center;
+                                    horizontal-stretch: 1;
+                                    Text {
+                                        text: Lang.t("liability_checkbox", Lang.current);
+                                        font-size: 12px;
+                                        font-weight: 500;
+                                        color: root.install_liability_accepted ? Theme.text-main : Theme.text-muted;
+                                        wrap: word-wrap;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Sağ: EULA'yı Göster / Gizle Butonu ve Tümünü Kabul Et
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: 8px;
+                            AppButton {
+                                text: root.show_install_eula ? Lang.t("hide_eula", Lang.current) : Lang.t("show_eula", Lang.current);
+                                variant: "secondary";
+                                button_height: 26px;
+                                padding_x: 10px;
+                                clicked => { root.show_install_eula = !root.show_install_eula; }
+                            }
+                            AppButton {
+                                text: Lang.t("accept_all", Lang.current);
+                                variant: (root.install_eula_accepted && root.install_liability_accepted) ? "secondary" : "primary";
+                                button_height: 26px;
+                                padding_x: 10px;
+                                clicked => {
+                                    root.install_eula_accepted = true;
+                                    root.install_liability_accepted = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Kurulum Log Çıktısı (Kurulum Başlayınca veya Bitince)
+            if root.is_installing || root.install_finished: Rectangle {
+                vertical-stretch: 1;
+                background: #0b0d13;
+                border-radius: Theme.radius-sm;
+                border-width: 1px;
+                border-color: Theme.border;
+                clip: true;
+
+                ScrollView {
+                    width: 100%;
+                    height: 100%;
+
+                    VerticalLayout {
+                        padding: 10px;
+
+                        Text {
+                            text: root.install_dialog_log != "" ? root.install_dialog_log : "[BenchHub] " + Lang.t("status_installing_log", Lang.current) + "...";
+                            font-family: "monospace";
+                            font-size: 11px;
+                            color: #d1d5db;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+            }
+
+            Rectangle { height: 1px; background: Theme.border; }
+
+            // 5. Alt Butonlar
+            HorizontalLayout {
+                spacing: Theme.space-sm;
+                alignment: end;
+
+                if !root.is_installing && !root.install_finished: AppButton {
+                    text: Lang.t("start_install", Lang.current);
+                    variant: (root.install_eula_accepted && root.install_liability_accepted) ? "primary" : "secondary";
+                    enabled: (root.install_eula_accepted && root.install_liability_accepted);
+                    button_height: 32px;
+                    padding_x: 16px;
+                    clicked => {
+                        if (root.install_eula_accepted && root.install_liability_accepted) {
+                            root.start_install(root.install_target_id, root.install_target_version);
+                        }
+                    }
+                }
+
+                AppButton {
+                    text: root.install_finished ? Lang.t("close", Lang.current) : Lang.t("cancel", Lang.current);
+                    variant: "secondary";
+                    button_height: 32px;
+                    padding_x: 16px;
+                    clicked => { root.close_install_dialog(); }
+                }
+            }
+        }
+    }
+}

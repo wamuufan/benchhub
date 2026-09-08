@@ -241,8 +241,8 @@ fn test_telemetry_summary_calculation() {
             ac_power_w: 187.0,
             ram_usage_mb: 8192.0,
             vram_usage_mb: 4096.0,
-            cpu_throttle: "Yok".to_string(),
-            gpu_throttle: "Yok".to_string(),
+            cpu_throttle: "none".to_string(),
+            gpu_throttle: "none".to_string(),
         },
         TelemetryData {
             timestamp: 2000,
@@ -258,8 +258,8 @@ fn test_telemetry_summary_calculation() {
             ac_power_w: 227.0,
             ram_usage_mb: 10240.0,
             vram_usage_mb: 6144.0,
-            cpu_throttle: "Termal Kısma".to_string(),
-            gpu_throttle: "Güç Limiti".to_string(),
+            cpu_throttle: "thermal_throttle".to_string(),
+            gpu_throttle: "power_limit".to_string(),
         },
     ];
 
@@ -288,8 +288,8 @@ fn test_telemetry_summary_calculation() {
     assert!((summary.peak_ram_gb - 10.0).abs() < 0.01);
     assert!((summary.avg_vram_gb - 5.0).abs() < 0.01);
     assert!((summary.peak_vram_gb - 6.0).abs() < 0.01);
-    assert_eq!(summary.cpu_throttling, "Termal Kısma (%50)");
-    assert_eq!(summary.gpu_throttling, "Güç Limiti (%50)");
+    assert_eq!(summary.cpu_throttling, "thermal_throttle (%50)");
+    assert_eq!(summary.gpu_throttling, "power_limit (%50)");
 }
 
 #[test]
@@ -329,8 +329,8 @@ fn test_telemetry_summary_calculation_single_sample() {
         ac_power_w: 110.0,
         ram_usage_mb: 8192.0,  // 8.0 GB
         vram_usage_mb: 4096.0, // 4.0 GB
-        cpu_throttle: "Termal Kısma".to_string(),
-        gpu_throttle: "Güç Sınırı".to_string(),
+        cpu_throttle: "thermal_throttle".to_string(),
+        gpu_throttle: "power_limit".to_string(),
     };
 
     let summary = calculate_telemetry_summary(&[sample]);
@@ -350,6 +350,6 @@ fn test_telemetry_summary_calculation_single_sample() {
     assert_eq!(summary.peak_gpu_power_w, 40.0);
     assert_eq!(summary.avg_ac_power_w, 110.0);
     assert_eq!(summary.peak_ac_power_w, 110.0);
-    assert_eq!(summary.cpu_throttling, "Termal Kısma (%100)");
-    assert_eq!(summary.gpu_throttling, "Güç Limiti (%100)");
+    assert_eq!(summary.cpu_throttling, "thermal_throttle (%100)");
+    assert_eq!(summary.gpu_throttling, "power_limit (%100)");
 }

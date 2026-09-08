@@ -1,0 +1,600 @@
+import { ScrollView } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { AppButton } from "../components/app_button.slint";
+import { Lang, CompareRunColumn } from "../types.slint";
+
+export component CompareDialog inherits Rectangle {
+    background: #000000bb;
+    width: 100%;
+    height: 100%;
+    z: 9999;
+
+    in-out property <[CompareRunColumn]> compare_runs;
+
+    callback close_compare_dialog();
+    callback export_comparison_image();
+
+        TouchArea {}
+
+        Rectangle {
+            width: root.compare_runs.length <= 2 ? 720px :
+                   root.compare_runs.length == 3 ? 920px :
+                   root.compare_runs.length == 4 ? 1080px : (parent.width * 0.94);
+            height: (parent.height * 0.78).max(560px).min(parent.height * 0.92);
+            background: Theme.surface;
+            border-radius: Theme.radius-md;
+            border-width: 1px;
+            border-color: Theme.border;
+
+            VerticalLayout {
+                padding: Theme.space-lg;
+                spacing: Theme.space-sm;
+
+                // 1. Header
+                HorizontalLayout {
+                    Text {
+                        text: Lang.t("compare_title", Lang.current);
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: Theme.text-main;
+                        horizontal-stretch: 1;
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                    }
+
+                    Rectangle {
+                        background: Theme.bg-dark;
+                        border-radius: Theme.radius-sm;
+                        border-width: 1px;
+                        border-color: Theme.primary;
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            padding-top: 4px;
+                            padding-bottom: 4px;
+                            alignment: center;
+                            Text {
+                                text: root.compare_runs.length + " " + Lang.t("tests_compared", Lang.current);
+                                font-size: 12px;
+                                font-weight: 700;
+                                color: Theme.primary;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // 2. Üst Özet Bandı
+                Rectangle {
+                    height: 84px;
+                    background: Theme.bg-dark;
+                    border-radius: Theme.radius-sm;
+                    border-width: 1px;
+                    border-color: Theme.border;
+
+                    HorizontalLayout {
+                        HorizontalLayout {
+                            width: 190px;
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            Text {
+                                text: Lang.t("test_parameters", Lang.current);
+                                font-size: 13px;
+                                font-weight: 700;
+                                color: Theme.primary;
+                                vertical-alignment: center;
+                                horizontal-alignment: left;
+                            }
+                        }
+
+                        for col in root.compare_runs: HorizontalLayout {
+                            horizontal-stretch: 1;
+                            min-width: 140px;
+
+                            Rectangle {
+                                width: 1px;
+                                background: Theme.border;
+                            }
+
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                padding: 6px;
+                                alignment: center;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "[" + col.id + "] " + col.title;
+                                    font-size: 12px;
+                                    font-weight: 700;
+                                    color: Theme.text-main;
+                                    overflow: elide;
+                                    horizontal-alignment: center;
+                                }
+                                Text {
+                                    text: col.preset + " • " + col.gpu_mode;
+                                    font-size: 10px;
+                                    color: Theme.text-muted;
+                                    overflow: elide;
+                                    horizontal-alignment: center;
+                                }
+                                Text {
+                                    text: Lang.t("score", Lang.current) + ": " + col.score;
+                                    font-size: 14px;
+                                    font-weight: 800;
+                                    color: #10b981;
+                                    horizontal-alignment: center;
+                                }
+                                Text {
+                                    text: col.date;
+                                    font-size: 10px;
+                                    color: Theme.text-muted;
+                                    overflow: elide;
+                                    horizontal-alignment: center;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // 3. Alt Alta Dizilen Metrik Satırları (ScrollView)
+                ScrollView {
+                    VerticalLayout {
+                        spacing: 4px;
+                        padding-right: 4px;
+                        padding-bottom: 12px;
+
+                        // GRUP 1: 💻 İŞLEMCİ (CPU) METRİKLERİ
+                        Text { text: Lang.t("cpu_metrics_group", Lang.current); font-size: 11px; font-weight: 700; color: Theme.primary; }
+
+                        // CPU Kullanımı Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("cpu_usage_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.cpu_usage; font-size: 12px; font-weight: 700; color: #38bdf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // CPU Sıcaklık Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("cpu_temp_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.cpu_temp; font-size: 12px; font-weight: 700; color: #fb923c; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // CPU Frekans Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("cpu_freq_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.cpu_freq; font-size: 12px; font-weight: 700; color: #818cf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // CPU Güç Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("cpu_power_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.cpu_power; font-size: 12px; font-weight: 700; color: #34d399; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // CPU Throttling Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("cpu_throttling_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: col.has_cpu_throttling ? 1.5px : 0px;
+                                        border-color: col.has_cpu_throttling ? Theme.danger : transparent;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.cpu_throttling; font-size: 11px; font-weight: 700; color: Theme.text-main; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GRUP 2: 🎮 EKRAN KARTI (GPU) METRİKLERİ
+                        Text { text: Lang.t("gpu_metrics_group", Lang.current); font-size: 11px; font-weight: 700; color: Theme.warning; }
+
+                        // GPU Kullanımı Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_usage_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_usage; font-size: 12px; font-weight: 700; color: #38bdf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU Sıcaklık Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_temp_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_temp; font-size: 12px; font-weight: 700; color: #fb923c; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU Frekans Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_freq_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_freq; font-size: 12px; font-weight: 700; color: #818cf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU VRAM Frekans Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("vram_freq_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.vram_freq; font-size: 12px; font-weight: 700; color: #818cf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU Güç Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_power_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_power; font-size: 12px; font-weight: 700; color: #34d399; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU Throttling Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_throttling_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        border-radius: Theme.radius-sm;
+                                        border-width: col.has_gpu_throttling ? 1.5px : 0px;
+                                        border-color: col.has_gpu_throttling ? (col.gpu_throttling == "Güç Limiti" ? Theme.warning : Theme.danger) : transparent;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_throttling; font-size: 11px; font-weight: 700; color: Theme.text-main; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GRUP 3: 🧠 BELLEK METRİKLERİ
+                        Text { text: Lang.t("memory_metrics_group", Lang.current); font-size: 11px; font-weight: 700; color: #a855f7; }
+
+                        // Sistem RAM Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("ram_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.ram; font-size: 12px; font-weight: 700; color: #38bdf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU VRAM Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("vram_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.vram; font-size: 12px; font-weight: 700; color: #c084fc; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GRUP 4: 📦 SÜRE VE AC GÜÇ METRİKLERİ
+                        Text { text: Lang.t("other_metrics_group", Lang.current); font-size: 11px; font-weight: 700; color: Theme.text-main; }
+
+                        // Süre Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("duration_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.duration; font-size: 12px; font-weight: 700; color: Theme.text-main; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // GPU Modu Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("gpu_mode", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.gpu_mode; font-size: 12px; font-weight: 700; color: #38bdf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Güç Profili Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("power_profile_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.power_profile != "" ? col.power_profile : Lang.t("unknown", Lang.current); font-size: 12px; font-weight: 700; color: #38bdf8; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // AC Güç Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("ac_power_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.ac_power; font-size: 12px; font-weight: 700; color: #34d399; vertical-alignment: center; horizontal-alignment: center; overflow: elide; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Donanım Bilgisi Row
+                        Rectangle {
+                            height: 36px; background: Theme.bg-dark; border-radius: Theme.radius-sm; border-width: 1px; border-color: Theme.border;
+                            HorizontalLayout {
+                                HorizontalLayout {
+                                    width: 190px; padding-left: 12px; padding-right: 12px;
+                                    Text { text: Lang.t("system_info_row", Lang.current); font-size: 12px; color: Theme.text-muted; vertical-alignment: center; horizontal-alignment: left; }
+                                }
+                                for col in root.compare_runs: HorizontalLayout {
+                                    horizontal-stretch: 1; min-width: 140px;
+                                    Rectangle { width: 1px; background: Theme.border; }
+                                    Rectangle {
+                                        horizontal-stretch: 1; clip: true;
+                                        HorizontalLayout {
+                                            padding-left: 6px; padding-right: 6px; alignment: center;
+                                            Text { text: col.system_info; font-size: 10px; color: Theme.text-muted; overflow: elide; vertical-alignment: center; horizontal-alignment: center; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 4. Footer Divider
+                Rectangle { height: 1px; background: Theme.border; }
+
+                // 5. Footer: Sol tarafta özet metin, Sağ tarafta PNG Kaydet ve Kapat butonları
+                HorizontalLayout {
+                    spacing: Theme.space-sm;
+
+                    Text {
+                        text: Lang.t("compare_summary_prefix", Lang.current) + " " + root.compare_runs.length + " " + Lang.t("compare_summary_suffix", Lang.current);
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: Theme.text-muted;
+                        horizontal-stretch: 1;
+                        vertical-alignment: center;
+                        horizontal-alignment: left;
+                        overflow: elide;
+                    }
+
+                    AppButton {
+                        text: Lang.t("export_png", Lang.current);
+                        variant: "primary";
+                        button_height: 32px;
+                        clicked => { root.export_comparison_image(); }
+                    }
+
+                    AppButton {
+                        text: Lang.t("close", Lang.current);
+                        variant: "secondary";
+                        button_height: 32px;
+                        clicked => { root.close_compare_dialog(); }
+                    }
+                }
+            }
+        }
+    }

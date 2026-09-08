@@ -1,0 +1,116 @@
+import { LineEdit } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { AppButton } from "../components/app_button.slint";
+import { Lang } from "../types.slint";
+
+export component GroupDialog inherits Rectangle {
+    z: 9999;
+    width: 100%;
+    height: 100%;
+    background: #000000bb;
+
+    in-out property <string> group_dialog_name;
+    callback close_group_dialog();
+    callback confirm_group_runs(string);
+
+    TouchArea { }
+
+    Rectangle {
+        width: min(520px, parent.width * 0.92);
+        height: min(240px, parent.height * 0.85);
+        border-radius: Theme.radius-md;
+        background: Theme.surface;
+        border-width: 1px;
+        border-color: Theme.border;
+
+        VerticalLayout {
+            padding: Theme.space-lg;
+            spacing: Theme.space-md;
+
+            // Modal Header
+            HorizontalLayout {
+                alignment: space-between;
+                VerticalLayout {
+                    spacing: 3px;
+                    HorizontalLayout {
+                        spacing: Theme.space-sm;
+                        alignment: start;
+                        Text {
+                            text: "📁";
+                            font-size: 16px;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            text: Lang.t("group_dialog_title", Lang.current);
+                            font-size: 16px;
+                            font-weight: 700;
+                            color: Theme.text-main;
+                            vertical-alignment: center;
+                        }
+                    }
+                    Text {
+                        text: Lang.t("group_dialog_desc", Lang.current);
+                        font-size: 12px;
+                        color: Theme.text-muted;
+                    }
+                }
+
+                // Close X button
+                Rectangle {
+                    width: 28px;
+                    height: 28px;
+                    border-radius: Theme.radius-sm;
+                    background: close_grp_touch.has-hover ? Theme.surface-hover : #00000000;
+                    close_grp_touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.close_group_dialog(); }
+                    }
+                    Text {
+                        text: "✕";
+                        font-size: 14px;
+                        color: Theme.text-muted;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            Rectangle { height: 1px; background: Theme.border; }
+
+            // Group Name Input
+            VerticalLayout {
+                spacing: Theme.space-xs;
+                Text {
+                    text: Lang.t("group_name_label", Lang.current);
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: Theme.text-main;
+                }
+                LineEdit {
+                    placeholder-text: Lang.t("group_dialog_placeholder", Lang.current);
+                    text <=> root.group_dialog_name;
+                    height: 36px;
+                    accepted => { root.confirm_group_runs(root.group_dialog_name); }
+                }
+            }
+
+            // Action Buttons
+            HorizontalLayout {
+                alignment: end;
+                spacing: Theme.space-md;
+                AppButton {
+                    text: Lang.t("cancel", Lang.current);
+                    variant: "secondary";
+                    button_height: 32px;
+                    clicked => { root.close_group_dialog(); }
+                }
+                AppButton {
+                    text: Lang.t("group_action", Lang.current);
+                    variant: "primary";
+                    button_height: 32px;
+                    clicked => { root.confirm_group_runs(root.group_dialog_name); }
+                }
+            }
+        }
+    }
+}
