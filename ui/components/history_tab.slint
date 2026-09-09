@@ -35,8 +35,8 @@ export component HistoryTab inherits VerticalLayout {
     callback create_methodology();
     callback toggle_methodology_expand(int);
     in-out property <bool> has_grouped_selection: false;
-    in-out property <[string]> history_groups: ["Grup: Tümü"];
-    in-out property <string> selected_history_group: "Grup: Tümü";
+    in-out property <[string]> history_groups: ["Group: All"];
+    in-out property <string> selected_history_group: "Group: All";
     callback open_group_dialog();
     callback ungroup_selected();
     callback filter_history_group(string);

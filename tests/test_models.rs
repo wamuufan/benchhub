@@ -131,14 +131,11 @@ fn test_gpu_mode_serialization_and_display() {
         GpuMode::from_display_str("Dahili GPU (iGPU)"),
         GpuMode::Integrated
     );
-    assert_eq!(
-        GpuMode::from_display_str("Sistem Varsayılanı"),
-        GpuMode::Auto
-    );
+    assert_eq!(GpuMode::from_display_str("System Default"), GpuMode::Auto);
 
     assert_eq!(GpuMode::NvidiaDgpu.to_display_str(), "Harici GPU (NVIDIA)");
     assert_eq!(GpuMode::Integrated.to_display_str(), "Dahili GPU (iGPU)");
-    assert_eq!(GpuMode::Auto.to_display_str(), "Sistem Varsayılanı");
+    assert_eq!(GpuMode::Auto.to_display_str(), "System Default");
 }
 
 #[tokio::test]
@@ -204,7 +201,7 @@ fn test_run_comparison_diff_calculation() {
         preset_or_version: "1080p Extreme".to_string(),
         gpu_mode: "Harici GPU (NVIDIA)".to_string(),
         score: Some(10000.0),
-        status: "Başarılı".to_string(),
+        status: "completed".to_string(),
         timestamp: 1724500000,
         duration_secs: 60.0,
         avg_cpu_usage: 40.0,
@@ -248,7 +245,7 @@ fn test_run_comparison_diff_calculation() {
         preset_or_version: "1080p Extreme".to_string(),
         gpu_mode: "Harici GPU (NVIDIA)".to_string(),
         score: Some(10740.0),
-        status: "Başarılı".to_string(),
+        status: "completed".to_string(),
         timestamp: 1724500100,
         duration_secs: 58.5,
         avg_cpu_usage: 45.0,

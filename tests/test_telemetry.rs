@@ -148,8 +148,8 @@ async fn test_missing_executable_diagnostics_message() {
     let err = BenchmarkEngine::resolve_executable(&runner_dir, &profile)
         .expect_err("Should return error when executable is missing");
 
-    assert!(err.contains("Çalıştırılabilir dosya bulunamadı!"));
-    assert!(err.contains("Mevcut Dizin İçeriği:"));
+    assert!(err.contains("Executable not found!"));
+    assert!(err.contains("Current Directory Contents:"));
     assert!(err.contains("extracted/data/textures.bin"));
 
     let _ = tokio::fs::remove_dir_all(tmp_dir).await;

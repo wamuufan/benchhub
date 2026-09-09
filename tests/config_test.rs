@@ -27,7 +27,7 @@ fn test_config_boundary_validations_and_sanitization() {
         terminal_buffer_lines: 10,    // Below 50
         save_stopped_runs: true,
         selected_gpu_mode: "custom_unknown".into(),
-        language: "tr".into(),
+        language: "en".into(),
         max_test_duration_secs: 9999,
     };
 
@@ -35,7 +35,7 @@ fn test_config_boundary_validations_and_sanitization() {
 
     assert_eq!(settings.telemetry_interval_ms, 500);
     assert_eq!(settings.terminal_buffer_lines, 50);
-    assert_eq!(settings.selected_gpu_mode, "Sistem Varsayılanı");
+    assert_eq!(settings.selected_gpu_mode, "System Default");
     assert_eq!(settings.max_test_duration_secs, 300);
 
     let mut upper_settings = AppSettings {

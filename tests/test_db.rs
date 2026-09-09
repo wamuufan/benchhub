@@ -16,7 +16,7 @@ fn test_sqlite_db_operations() {
         preset_or_version: "Multi-Threaded".to_string(),
         gpu_mode: "Harici GPU (NVIDIA)".to_string(),
         score: Some(96060.0),
-        status: "Başarılı".to_string(),
+        status: "completed".to_string(),
         timestamp: 1724500000,
         duration_secs: 42.5,
         avg_cpu_usage: 98.2,
@@ -63,7 +63,7 @@ fn test_sqlite_db_operations() {
     assert_eq!(history[0].preset_or_version, "Multi-Threaded");
     assert_eq!(history[0].gpu_mode, "Harici GPU (NVIDIA)");
     assert_eq!(history[0].score, Some(96060.0));
-    assert_eq!(history[0].status, "Başarılı");
+    assert_eq!(history[0].status, "completed");
     assert_eq!(history[0].duration_secs, 42.5);
     assert_eq!(history[0].avg_cpu_temp, 65.4);
     assert_eq!(history[0].peak_cpu_temp, 78.1);
@@ -130,7 +130,7 @@ fn test_sqlite_schema_migration() {
     assert_eq!(history.len(), 1);
     assert_eq!(history[0].benchmark_id, "legacy_bench");
     assert_eq!(history[0].score, Some(1234.5));
-    assert_eq!(history[0].status, "Tamamlandı");
+    assert_eq!(history[0].status, "completed");
     assert_eq!(history[0].duration_secs, 0.0);
     assert_eq!(history[0].avg_cpu_temp, 50.0);
     assert_eq!(history[0].peak_cpu_temp, 60.0);
@@ -145,7 +145,7 @@ fn test_sqlite_schema_migration() {
         preset_or_version: "1080p Extreme".to_string(),
         gpu_mode: "⚡ Harici GPU".to_string(),
         score: Some(9999.0),
-        status: "Başarılı".to_string(),
+        status: "completed".to_string(),
         timestamp: 1700000100,
         duration_secs: 15.2,
         avg_cpu_usage: 45.0,
@@ -191,7 +191,7 @@ fn test_sqlite_schema_migration() {
     assert_eq!(history2[0].benchmark_id, "new_bench");
     assert_eq!(history2[0].category, "GPU");
     assert_eq!(history2[0].preset_or_version, "1080p Extreme");
-    assert_eq!(history2[0].status, "Başarılı");
+    assert_eq!(history2[0].status, "completed");
     assert_eq!(history2[0].log_path, "/tmp/new.log");
 }
 
@@ -209,7 +209,7 @@ fn test_sqlite_filtering_and_deletion() {
         preset_or_version: "v6.2.2".to_string(),
         gpu_mode: "Sistem".to_string(),
         score: Some(2500.0),
-        status: "Başarılı".to_string(),
+        status: "completed".to_string(),
         timestamp: 1724500100,
         duration_secs: 120.0,
         avg_cpu_usage: 90.0,
@@ -253,7 +253,7 @@ fn test_sqlite_filtering_and_deletion() {
         preset_or_version: "1080p Extreme".to_string(),
         gpu_mode: "Harici GPU (NVIDIA)".to_string(),
         score: Some(11000.0),
-        status: "Tamamlandı".to_string(),
+        status: "failed".to_string(),
         timestamp: 1724500200,
         duration_secs: 180.0,
         avg_cpu_usage: 30.0,
@@ -322,7 +322,7 @@ fn test_sqlite_filtering_and_deletion() {
 
     // 4. Filter by status
     let status_res = db
-        .get_filtered_history("", "", "", "Başarılı", HistorySortOrder::DateDesc)
+        .get_filtered_history("", "", "", "completed", HistorySortOrder::DateDesc)
         .unwrap();
     assert_eq!(status_res.len(), 1);
     assert_eq!(status_res[0].benchmark_id, "geekbench");
@@ -348,7 +348,7 @@ fn test_sqlite_sorting_orders() {
         preset_or_version: "v1".to_string(),
         gpu_mode: "Sistem".to_string(),
         score: Some(1000.0),
-        status: "Başarılı".to_string(),
+        status: "completed".to_string(),
         timestamp: 1000,
         duration_secs: 10.0,
         avg_cpu_usage: 50.0,
@@ -392,7 +392,7 @@ fn test_sqlite_sorting_orders() {
         preset_or_version: "v2".to_string(),
         gpu_mode: "⚡ Harici GPU".to_string(),
         score: Some(2000.0),
-        status: "Başarılı".to_string(),
+        status: "completed".to_string(),
         timestamp: 2000,
         duration_secs: 20.0,
         avg_cpu_usage: 80.0,
@@ -496,7 +496,7 @@ fn test_db_get_run_by_id() {
         preset_or_version: "v1.0".to_string(),
         gpu_mode: "Auto".to_string(),
         score: Some(1500.0),
-        status: "Başarılı".to_string(),
+        status: "completed".to_string(),
         timestamp: 123456,
         duration_secs: 12.5,
         avg_cpu_usage: 85.0,
@@ -574,7 +574,7 @@ fn create_mock_run(
         gpu_mode: GpuMode::NvidiaDgpu.to_display_str().to_string(),
         score,
         status: if score.is_some() {
-            "Başarılı".to_string()
+            "completed".to_string()
         } else {
             "İptal Edildi".to_string()
         },

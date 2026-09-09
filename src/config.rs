@@ -327,7 +327,7 @@ mod tests {
         s.sanitize();
         assert_eq!(s.telemetry_interval_ms, 500);
         assert_eq!(s.terminal_buffer_lines, 50);
-        assert_eq!(s.selected_gpu_mode, "Sistem Varsayılanı");
+        assert_eq!(s.selected_gpu_mode, "System Default");
         assert_eq!(s.language, "tr");
         assert_eq!(s.max_test_duration_secs, 300);
 

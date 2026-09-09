@@ -349,10 +349,12 @@ impl BenchmarkEngine {
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
 
-        let mut child = command.spawn().context("Kurulum komutu başlatılamadı")?;
+        let mut child = command
+            .spawn()
+            .context("Installation command failed to start")?;
 
-        let stdout = child.stdout.take().context("Stdout açılamadı")?;
-        let stderr = child.stderr.take().context("Stderr açılamadı")?;
+        let stdout = child.stdout.take().context("Failed to open stdout")?;
+        let stderr = child.stderr.take().context("Failed to open stderr")?;
 
         let (out_tx, mut out_rx) = tokio::sync::mpsc::channel::<String>(1024);
 
@@ -409,7 +411,7 @@ impl BenchmarkEngine {
         };
 
         if !status.success() {
-            anyhow::bail!("Kurulum başarısız oldu (çıkış kodu: {})", status);
+            anyhow::bail!("Installation failed (exit code: {})", status);
         }
 
         Ok(())
@@ -468,13 +470,13 @@ impl BenchmarkEngine {
                     || url.contains(';')
                     || url.contains('&')
                 {
-                    anyhow::bail!("Geçersiz karakterler içeren URL: {}", url);
+                    anyhow::bail!("URL contains invalid characters: {}", url);
                 }
                 if run_filename.contains('/')
                     || run_filename.contains('\\')
                     || run_filename.is_empty()
                 {
-                    anyhow::bail!("URL'den çıkarılan dosya adı geçersiz: {}", run_filename);
+                    anyhow::bail!("Extracted filename from URL is invalid: {}", run_filename);
                 }
 
                 let extracted_dir = runner_dir.join("extracted");
@@ -515,7 +517,7 @@ impl BenchmarkEngine {
                 }
             } else {
                 anyhow::bail!(
-                    "Kurulum komutu veya indirme bağlantısı tanımlanmamış: {}",
+                    "Installation command or download link not defined: {}",
                     effective_profile.name
                 );
             }
@@ -689,7 +691,7 @@ impl BenchmarkEngine {
                     diag
                 );
                 log_error(&mut log_file, &err_msg, &mut on_output);
-                anyhow::bail!("Çalıştırılabilir dosya bulunamadı: {}", diag);
+                anyhow::bail!("Executable not found: {}", diag);
             }
         };
 
@@ -765,13 +767,16 @@ impl BenchmarkEngine {
             Ok(c) => c,
             Err(e) => {
                 let err_msg = format!(
-                    "[BenchHub] HATA: Benchmark başlatılamadı: {} (Dizin: {})\nDetay: {}\n",
+                    "[BenchHub] ERROR: Failed to start benchmark: {} (Directory: {})\nDetail: {}\n",
                     resolved.executable,
                     resolved.work_dir.display(),
                     e
                 );
                 log_error(&mut log_file, &err_msg, &mut on_output);
-                return Err(e).context(format!("Benchmark başlatılamadı: {}", resolved.executable));
+                return Err(e).context(format!(
+                    "Failed to start benchmark: {}",
+                    resolved.executable
+                ));
             }
         };
 
@@ -840,11 +845,7 @@ impl BenchmarkEngine {
                             kill_process_group(pid);
                         }
                         let _ = child.kill().await;
-                        let stop_msg = if is_en {
-                            "\n[BenchHub] ⏹ Benchmark stopped by user.\n".to_string()
-                        } else {
-                            "\n[BenchHub] ⏹ Test kullanıcı tarafından durduruldu.\n".to_string()
-                        };
+                        let stop_msg = "\n[BenchHub] ⏹ Benchmark stopped by user.\n".to_string();
                         if let Some(f) = &mut log_file {
                             use std::io::Write;
                             let _ = f.write_all(stop_msg.as_bytes());
@@ -860,17 +861,10 @@ impl BenchmarkEngine {
                         kill_process_group(pid);
                     }
                     let _ = child.kill().await;
-                    let timeout_msg = if is_en {
-                        format!(
-                            "\n[BenchHub] ⏱ Timeout: Benchmark exceeded maximum duration ({} s) and was terminated.\n",
-                            timeout_secs.unwrap_or(0)
-                        )
-                    } else {
-                        format!(
-                            "\n[BenchHub] ⏱ Zaman Aşımı: Test belirlenen maksimum süreyi ({} sn) aştığı için durduruldu.\n",
-                            timeout_secs.unwrap_or(0)
-                        )
-                    };
+                    let timeout_msg = format!(
+                        "\n[BenchHub] ⏱ Timeout: Benchmark exceeded maximum duration ({} s) and was terminated.\n",
+                        timeout_secs.unwrap_or(0)
+                    );
                     if let Some(f) = &mut log_file {
                         use std::io::Write;
                         let _ = f.write_all(timeout_msg.as_bytes());
@@ -945,7 +939,7 @@ impl BenchmarkEngine {
                             if meta.is_file() {
                                 if let Ok(content) = tokio::fs::read_to_string(&path).await {
                                     let summary_header =
-                                    "\n[BenchHub] === Superposition Benchmark Sonuç Özeti ===\n";
+                                    "\n[BenchHub] === Superposition Benchmark Result Summary ===\n";
                                     on_output(summary_header.to_string());
                                     if let Some(f) = &mut log_file {
                                         use std::io::Write;
@@ -985,32 +979,17 @@ impl BenchmarkEngine {
         };
 
         let finish_msg = if stopped_by_user {
-            if is_en {
-                "[BenchHub] Benchmark process stopped.\n".to_string()
-            } else {
-                "[BenchHub] Benchmark işlemi durduruldu.\n".to_string()
-            }
+            "[BenchHub] Benchmark process stopped.\n".to_string()
         } else if timed_out {
-            if is_en {
-                format!(
-                    "[BenchHub] ⏱ Benchmark terminated due to timeout (Score: {:?})\n",
-                    score
-                )
-            } else {
-                format!("[BenchHub] ⏱ Benchmark işlemi zaman aşımı nedeniyle sonlandırıldı (Skor: {:?})\n", score)
-            }
+            format!(
+                "[BenchHub] ⏱ Benchmark terminated due to timeout (Score: {:?})\n",
+                score
+            )
         } else {
-            if is_en {
-                format!(
-                    "[BenchHub] Benchmark process finished (Exit code: {:?}, Score: {:?})\n",
-                    exit_code, score
-                )
-            } else {
-                format!(
-                    "[BenchHub] Benchmark işlemi sonlandı (Çıkış kodu: {:?}, Skor: {:?})\n",
-                    exit_code, score
-                )
-            }
+            format!(
+                "[BenchHub] Benchmark process finished (Exit code: {:?}, Score: {:?})\n",
+                exit_code, score
+            )
         };
         if let Some(f) = &mut log_file {
             use std::io::Write;
@@ -1020,21 +999,21 @@ impl BenchmarkEngine {
         on_output(finish_msg);
 
         let status_desc = if stopped_by_user {
-            "Durduruldu".to_string()
+            "Stopped".to_string()
         } else if timed_out {
             if score.is_some() {
-                "Zaman Aşımı (Skor Alındı)".to_string()
+                "Timeout (Scored)".to_string()
             } else {
-                "Zaman Aşımı".to_string()
+                "Timeout".to_string()
             }
         } else if exit_code == Some(0) && score.is_some() {
-            "Başarılı".to_string()
+            "Success".to_string()
         } else if exit_code == Some(0) {
-            "Tamamlandı".to_string()
+            "Completed".to_string()
         } else if score.is_some() {
-            "Skor Alındı".to_string()
+            "Scored".to_string()
         } else {
-            "Tamamlandı (Log Kaydedildi)".to_string()
+            "Completed (Log Saved)".to_string()
         };
 
         Ok(BenchmarkRunOutput {
@@ -1243,7 +1222,7 @@ impl BenchmarkEngine {
         // 3. Diagnostics listing if not found
         let contents = list_dir_contents_recursive(runner_dir, 30);
         let contents_formatted = if contents.is_empty() {
-            "  (Dizin tamamen boş)".to_string()
+            "  (Directory is completely empty)".to_string()
         } else {
             contents
                 .iter()
@@ -1253,7 +1232,7 @@ impl BenchmarkEngine {
         };
 
         Err(format!(
-            "Çalıştırılabilir dosya bulunamadı!\nAranan profil: {} (id: {})\nRunner dizini: {}\nMevcut Dizin İçeriği:\n{}",
+            "Executable not found!\nProfile searched: {} (id: {})\nRunner directory: {}\nCurrent Directory Contents:\n{}",
             profile.name,
             profile.id,
             runner_dir.display(),

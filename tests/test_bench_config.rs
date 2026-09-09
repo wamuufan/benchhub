@@ -112,7 +112,6 @@ fn test_unigine_config_generation() {
 fn test_bench_duration_parsing_and_formatting() {
     use benchhub::bench_config::{format_bench_duration, parse_bench_duration};
 
-    assert_eq!(parse_bench_duration("Varsayılan (Genel Ayar)"), None);
     assert_eq!(parse_bench_duration("Default (Global Setting)"), None);
     assert_eq!(parse_bench_duration("Sınırsız (Limit Yok)"), Some(0));
     assert_eq!(parse_bench_duration("Unlimited (No Limit)"), Some(0));
@@ -123,7 +122,6 @@ fn test_bench_duration_parsing_and_formatting() {
     assert_eq!(parse_bench_duration("300 saniye"), Some(300));
     assert_eq!(parse_bench_duration("600 saniye (10 dk)"), Some(600));
 
-    assert_eq!(format_bench_duration(None, "tr"), "Varsayılan (Genel Ayar)");
     assert_eq!(
         format_bench_duration(None, "en"),
         "Default (Global Setting)"

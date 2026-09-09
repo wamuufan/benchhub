@@ -94,3 +94,15 @@ perf.data.old
 core
 core.*
 vgcore.*
+
+# 📦 Flatpak, Snap ve Native Paketleme Kalıntıları
+*.flatpak
+*.snap
+.flatpak-builder/
+build-dir/
+repo/
+parts/
+stage/
+prime/
+.snapcraft/
+benchhub-dist/

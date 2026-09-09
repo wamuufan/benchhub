@@ -247,7 +247,7 @@ impl GpuMode {
         match self {
             GpuMode::NvidiaDgpu => "Harici GPU (NVIDIA)",
             GpuMode::Integrated => "Dahili GPU (iGPU)",
-            GpuMode::Auto => "Sistem Varsayılanı",
+            GpuMode::Auto => "System Default",
         }
     }
 }

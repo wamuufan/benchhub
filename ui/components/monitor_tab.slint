@@ -24,7 +24,7 @@ export component MonitorTab inherits VerticalLayout {
                     visible: root.active_tab == 1;
                     spacing: Theme.space-md;
     
-                        // Telemetri Kartları
+                        // Telemetry Cards
                         HorizontalLayout {
                             min-height: 75px;
                             max-height: 85px;
@@ -80,8 +80,8 @@ export component MonitorTab inherits VerticalLayout {
     
                             SurfaceCard {
                                 horizontal-stretch: 1;
-                                border-color: root.cpu_throttling_status == "Yok" || root.cpu_throttling_status == "Hayır" || root.cpu_throttling_status == "None" || root.cpu_throttling_status == "-" || root.cpu_throttling_status == Lang.t("none", Lang.current) ? Theme.border : Theme.danger;
-                                border-width: (root.cpu_throttling_status != "Yok" && root.cpu_throttling_status != "Hayır" && root.cpu_throttling_status != "None" && root.cpu_throttling_status != "-" && root.cpu_throttling_status != Lang.t("none", Lang.current)) ? 1.5px : 1px;
+                                border-color: root.cpu_throttling_status == "none" || root.cpu_throttling_status == "no" || root.cpu_throttling_status == "None" || root.cpu_throttling_status == "-" || root.cpu_throttling_status == Lang.t("none", Lang.current) ? Theme.border : Theme.danger;
+                                border-width: (root.cpu_throttling_status != "none" && root.cpu_throttling_status != "no" && root.cpu_throttling_status != "None" && root.cpu_throttling_status != "-" && root.cpu_throttling_status != Lang.t("none", Lang.current)) ? 1.5px : 1px;
                                 VerticalLayout {
                                     padding: Theme.space-md;
                                     alignment: center;
@@ -100,8 +100,8 @@ export component MonitorTab inherits VerticalLayout {
     
                             SurfaceCard {
                                 horizontal-stretch: 1;
-                                border-color: root.gpu_throttling_status == "Yok" || root.gpu_throttling_status == "Hayır" || root.gpu_throttling_status == "None" || root.gpu_throttling_status == "-" || root.gpu_throttling_status == Lang.t("none", Lang.current) ? Theme.border : (root.gpu_throttling_status == "Güç Limiti" || root.gpu_throttling_status == Lang.t("throttling_power", Lang.current) ? Theme.warning : Theme.danger);
-                                border-width: (root.gpu_throttling_status != "Yok" && root.gpu_throttling_status != "Hayır" && root.gpu_throttling_status != "None" && root.gpu_throttling_status != "-" && root.gpu_throttling_status != Lang.t("none", Lang.current)) ? 1.5px : 1px;
+                                border-color: root.gpu_throttling_status == "none" || root.gpu_throttling_status == "no" || root.gpu_throttling_status == "none" || root.gpu_throttling_status == "-" || root.gpu_throttling_status == Lang.t("none", Lang.current) ? Theme.border : (root.gpu_throttling_status == "power_limit" || root.gpu_throttling_status == Lang.t("throttling_power", Lang.current) ? Theme.warning : Theme.danger);
+                                border-width: (root.gpu_throttling_status != "none" && root.gpu_throttling_status != "no" && root.gpu_throttling_status != "none" && root.gpu_throttling_status != "-" && root.gpu_throttling_status != Lang.t("none", Lang.current)) ? 1.5px : 1px;
                                 VerticalLayout {
                                     padding: Theme.space-md;
                                     alignment: center;
@@ -119,7 +119,7 @@ export component MonitorTab inherits VerticalLayout {
                             }
                         }
     
-                        // Terminal Log Alanı
+                        // Terminal Log Area
                         VerticalLayout {
                             spacing: Theme.space-sm;
                             horizontal-stretch: 1;

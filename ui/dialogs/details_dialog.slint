@@ -194,8 +194,8 @@ export component DetailsDialog inherits Rectangle {
                                     height: 52px;
                                     background: Theme.bg-dark;
                                     border-radius: Theme.radius-sm;
-                                    border-width: (root.details_cpu_throttling != "Yok" && root.details_cpu_throttling != "Hayır" && root.details_cpu_throttling != "-" && root.details_cpu_throttling != "None" && root.details_cpu_throttling != Lang.t("none", Lang.current)) ? 1.5px : 1px;
-                                    border-color: (root.details_cpu_throttling != "Yok" && root.details_cpu_throttling != "Hayır" && root.details_cpu_throttling != "-" && root.details_cpu_throttling != "None" && root.details_cpu_throttling != Lang.t("none", Lang.current)) ? Theme.danger : Theme.border;
+                                    border-width: (root.details_cpu_throttling != "none" && root.details_cpu_throttling != "no" && root.details_cpu_throttling != "-" && root.details_cpu_throttling != "None" && root.details_cpu_throttling != Lang.t("none", Lang.current)) ? 1.5px : 1px;
+                                    border-color: (root.details_cpu_throttling != "none" && root.details_cpu_throttling != "no" && root.details_cpu_throttling != "-" && root.details_cpu_throttling != "None" && root.details_cpu_throttling != Lang.t("none", Lang.current)) ? Theme.danger : Theme.border;
                                     VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
                                         Text { text: Lang.t("cpu_throttling", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         Text {
@@ -294,8 +294,8 @@ export component DetailsDialog inherits Rectangle {
                                     height: 52px;
                                     background: Theme.bg-dark;
                                     border-radius: Theme.radius-sm;
-                                    border-width: (root.details_gpu_throttling != "Yok" && root.details_gpu_throttling != "Hayır" && root.details_gpu_throttling != "-" && root.details_gpu_throttling != "None" && root.details_gpu_throttling != Lang.t("none", Lang.current)) ? 1.5px : 1px;
-                                    border-color: (root.details_gpu_throttling == "Yok" || root.details_gpu_throttling == "Hayır" || root.details_gpu_throttling == "-" || root.details_gpu_throttling == "None" || root.details_gpu_throttling == Lang.t("none", Lang.current)) ? Theme.border : (root.details_gpu_throttling == "Güç Limiti" || root.details_gpu_throttling == Lang.t("throttling_power", Lang.current) ? Theme.warning : Theme.danger);
+                                    border-width: (root.details_gpu_throttling != "none" && root.details_gpu_throttling != "no" && root.details_gpu_throttling != "-" && root.details_gpu_throttling != "None" && root.details_gpu_throttling != Lang.t("none", Lang.current)) ? 1.5px : 1px;
+                                    border-color: (root.details_gpu_throttling == "none" || root.details_gpu_throttling == "no" || root.details_gpu_throttling == "-" || root.details_gpu_throttling == "None" || root.details_gpu_throttling == Lang.t("none", Lang.current)) ? Theme.border : (root.details_gpu_throttling == "power_limit" || root.details_gpu_throttling == Lang.t("throttling_power", Lang.current) ? Theme.warning : Theme.danger);
                                     VerticalLayout { padding: 4px; alignment: center; spacing: 2px;
                                         Text { text: Lang.t("gpu_throttling", Lang.current); font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         Text {

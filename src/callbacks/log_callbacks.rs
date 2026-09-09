@@ -213,7 +213,7 @@ pub fn register_log_callbacks(ui: &AppWindow, app_state: &AppState) {
         let text_to_copy = text.to_string();
         tokio::spawn(async move {
             if let Err(e) = copy_to_clipboard(&text_to_copy) {
-                tracing::error!("Panoya kopyalama başarısız oldu: {}", e);
+                tracing::error!("Failed to copy to clipboard: {}", e);
             }
         });
     });

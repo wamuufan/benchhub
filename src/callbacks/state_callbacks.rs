@@ -67,7 +67,7 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
         if let Err(e) = benchhub::config::update_settings(&config_path_interval, |s| {
             s.telemetry_interval_ms = ms;
         }) {
-            tracing::error!("Telemetri aralığı kaydedilemedi: {}", e);
+            tracing::error!("Failed to save telemetry interval: {}", e);
         }
     });
 
@@ -102,7 +102,7 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
         if let Err(e) = benchhub::config::update_settings(&config_path_limit, |s| {
             s.terminal_buffer_lines = lines;
         }) {
-            tracing::error!("Konsol arabellek sınırı kaydedilemedi: {}", e);
+            tracing::error!("Failed to save terminal buffer limit: {}", e);
         }
     });
 
@@ -128,7 +128,7 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
         if let Err(e) = benchhub::config::update_settings(&config_path_stopped, |s| {
             s.save_stopped_runs = should_save;
         }) {
-            tracing::error!("Durdurulan test kaydetme ayarı kaydedilemedi: {}", e);
+            tracing::error!("Failed to save stopped runs setting: {}", e);
         }
     });
 
@@ -165,7 +165,7 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
         if let Err(e) = benchhub::config::update_settings(&config_path_duration, |s| {
             s.max_test_duration_secs = secs;
         }) {
-            tracing::error!("Maksimum test süresi ayarı kaydedilemedi: {}", e);
+            tracing::error!("Failed to save maximum test duration setting: {}", e);
         }
     });
 
@@ -193,7 +193,7 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
         if let Err(e) = benchhub::config::update_settings(&config_path_gpu, |s| {
             s.selected_gpu_mode = mode_str;
         }) {
-            tracing::error!("GPU modu ayarı kaydedilemedi: {}", e);
+            tracing::error!("Failed to save GPU mode setting: {}", e);
         }
     });
 
@@ -212,7 +212,7 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
                         s.language = lang_code.to_string();
                     })
                 {
-                    tracing::error!("Dil ayarı kaydedilemedi: {}", e);
+                    tracing::error!("Failed to save language setting: {}", e);
                 }
                 settings.clone()
             } else {

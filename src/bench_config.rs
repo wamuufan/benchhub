@@ -49,7 +49,7 @@ pub fn filter_safe_custom_args(custom_args: &str) -> Vec<String> {
 pub fn validate_custom_arg(arg: &str) -> Result<(), &'static str> {
     let trimmed = arg.trim();
     if trimmed.is_empty() {
-        return Err("Argüman boş olamaz");
+        return Err("Argument cannot be empty");
     }
     if trimmed == "-o"
         || trimmed == "--output"
@@ -58,19 +58,19 @@ pub fn validate_custom_arg(arg: &str) -> Result<(), &'static str> {
         || trimmed.starts_with("--output=")
         || trimmed.starts_with("-y=")
     {
-        return Err("Tehlikeli bayrak kullanımı (-o, --output, -y) yasaktır");
+        return Err("Dangerous flag usage (-o, --output, -y) is forbidden");
     }
     if trimmed.contains("..") {
-        return Err("Dizin geçişi ('..') içeren argümanlar yasaktır");
+        return Err("Arguments containing path traversal ('..') are forbidden");
     }
     if trimmed.starts_with('/') || trimmed.contains("=/") {
-        return Err("Kök dizini ('/') referans alan mutlak yollar yasaktır");
+        return Err("Absolute paths referencing root directory ('/') are forbidden");
     }
     if trimmed
         .chars()
         .any(|c| matches!(c, ';' | '&' | '|' | '`' | '$' | '>' | '<' | '\n' | '\r'))
     {
-        return Err("Tehlikeli kabuk karakterleri içeren argümanlar yasaktır");
+        return Err("Arguments containing dangerous shell characters are forbidden");
     }
     Ok(())
 }
@@ -95,7 +95,7 @@ impl Default for FfmpegConfig {
             crf: 23,
             preset: "medium".to_string(),
             resolution: "1080p FHD (1920x1080)".to_string(),
-            input_source: "Sentetik Test Kaynağı (lavfi testsrc2)".to_string(),
+            input_source: "Synthetic Test Source (lavfi testsrc2)".to_string(),
             duration_enabled: true,
             duration_secs: 20,
             threads: 0,
@@ -297,7 +297,7 @@ impl Default for SevenZipConfig {
     fn default() -> Self {
         Self {
             threads: 0,
-            dict_size: "32MB (Varsayılan)".to_string(),
+            dict_size: "32MB (Default)".to_string(),
             passes: 1,
             custom_args: String::new(),
         }

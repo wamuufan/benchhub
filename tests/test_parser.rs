@@ -216,7 +216,7 @@ async fn test_unigine_execution_isolation_and_cwd() {
         .expect("Run should succeed");
 
     assert_eq!(result.score, Some(12345.0));
-    assert_eq!(result.status, "Başarılı");
+    assert_eq!(result.status, "Success");
 
     let _ = tokio::fs::remove_dir_all(tmp_dir).await;
 }
@@ -334,7 +334,7 @@ async fn test_engine_cancellation_stopping() {
         .await
         .expect("Engine run with cancel should succeed");
 
-    assert_eq!(res.status, "Durduruldu");
+    assert_eq!(res.status, "Stopped");
     let _ = tokio::fs::remove_dir_all(tmp_dir).await;
 }
 
@@ -384,7 +384,7 @@ async fn test_engine_timeout_stopping() {
         .await
         .expect("Engine run with timeout should succeed");
 
-    assert_eq!(res.status, "Zaman Aşımı");
+    assert_eq!(res.status, "Timeout");
     let _ = tokio::fs::remove_dir_all(tmp_dir).await;
 }
 
@@ -531,7 +531,7 @@ async fn test_geekbench_engine_execution_and_score_capture() {
 
     assert!(result.score.is_some(), "Score must be captured!");
     assert!(result.score.unwrap() > 100.0, "Score must be valid number");
-    assert_eq!(result.status, "Başarılı");
+    assert_eq!(result.status, "Success");
 }
 
 #[test]

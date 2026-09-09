@@ -109,7 +109,7 @@ pub fn register_engine_callbacks(ui: &AppWindow, app_state: &AppState) {
         tokio::spawn(async move {
             let (inst_tx, mut inst_rx) = tokio::sync::mpsc::channel::<String>(512);
             let ui_weak_stream = ui_weak.clone();
-            let initial_msg = format!("[BenchHub] Kurulum başlatılıyor: {}\n", name_str);
+            let initial_msg = format!("[BenchHub] Installation starting: {}\n", name_str);
 
             tokio::spawn(async move {
                 let mut log_ring_buf = benchhub::logging::TerminalRingBuffer::new(200);
@@ -274,7 +274,7 @@ pub fn register_engine_callbacks(ui: &AppWindow, app_state: &AppState) {
             if let Some(tx) = opt_tx {
                 let _ = tx.send(true);
                 let _ = term_tx_stop.try_send(TerminalMsg::Append(
-                    "\n[BenchHub] ⏹ Test durdurma sinyali gönderildi...\n".to_string(),
+                    "\n[BenchHub] ⏹ Test stop signal sent...\n".to_string(),
                 ));
                 let _ = slint::invoke_from_event_loop(move || {
                     if let Some(ui) = ui_weak_stop.upgrade() {
@@ -302,7 +302,7 @@ pub fn register_engine_callbacks(ui: &AppWindow, app_state: &AppState) {
             if let Some(tx) = opt_tx {
                 let _ = tx.send(true);
                 let _ = term_tx_stop_all.try_send(TerminalMsg::Append(
-                    "\n[BenchHub] ⏹ Tüm test kuyruğu durduruluyor...\n".to_string(),
+                    "\n[BenchHub] ⏹ Entire test queue is stopping...\n".to_string(),
                 ));
             }
             let _ = slint::invoke_from_event_loop(move || {
@@ -592,7 +592,7 @@ async fn execute_single_benchmark_flow(
         preset_or_version: effective_preset_str.clone(),
         gpu_mode: current_gpu_mode.to_display_str().to_string(),
         score: None,
-        status: "Çalışıyor".to_string(),
+        status: "Running".to_string(),
         timestamp: start_ts,
         duration_secs: 0.0,
         avg_cpu_usage: 0.0,
@@ -619,8 +619,8 @@ async fn execute_single_benchmark_flow(
         peak_ram_gb: 0.0,
         avg_vram_gb: 0.0,
         peak_vram_gb: 0.0,
-        cpu_throttling: "Yok".to_string(),
-        gpu_throttling: "Yok".to_string(),
+        cpu_throttling: "None".to_string(),
+        gpu_throttling: "None".to_string(),
         system_info_summary: sys_info.clone(),
         power_profile: power_prof.clone(),
         log_path: log_path_str.clone(),
@@ -675,12 +675,12 @@ async fn execute_single_benchmark_flow(
             Ok(Err(e)) => {
                 let _ = app_state
                     .terminal_tx
-                    .try_send(TerminalMsg::Append(format!("\n[BenchHub] Hata: {}\n", e)));
-                (None, "Hata".to_string())
+                    .try_send(TerminalMsg::Append(format!("\n[BenchHub] Error: {}\n", e)));
+                (None, "Error".to_string())
             }
             Err(_) => {
                 let timeout_msg = format!(
-                    "\n[BenchHub] ⏱️ Test belirlenen maksimum süreyi ({} sn) aştı ve zaman aşımı korumasıyla durduruldu.\n",
+                    "\n[BenchHub] ⏱️ Test exceeded maximum duration ({} s) and was stopped by timeout protection.\n",
                     timeout_dur.as_secs()
                 );
                 let _ = app_state
@@ -703,8 +703,8 @@ async fn execute_single_benchmark_flow(
             Err(e) => {
                 let _ = app_state
                     .terminal_tx
-                    .try_send(TerminalMsg::Append(format!("\n[BenchHub] Hata: {}\n", e)));
-                (None, "Hata".to_string())
+                    .try_send(TerminalMsg::Append(format!("\n[BenchHub] Error: {}\n", e)));
+                (None, "Error".to_string())
             }
         }
     };
@@ -754,7 +754,7 @@ async fn execute_single_benchmark_flow(
     run_res.gpu_throttling = summary.gpu_throttling;
     run_res.system_info_summary = sys_info;
 
-    let should_record = status != "Durduruldu"
+    let should_record = status != "Stopped"
         || app_state
             .save_stopped_runs_flag
             .load(std::sync::atomic::Ordering::Relaxed);
@@ -794,7 +794,7 @@ async fn execute_single_benchmark_flow(
                 let filter = filter_refresh.lock().unwrap_or_else(|e| e.into_inner());
                 refresh_history_view(&ui, &db_refresh, &filter);
 
-                if status == "Durduruldu" {
+                if status == "Stopped" {
                     if should_record {
                         ui.set_status_text(
                             benchhub::i18n::t("status_test_stopped_recorded").into(),
