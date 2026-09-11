@@ -1,5 +1,5 @@
 app-id: org.benchhub.BenchHub
-runtime: org.freedesktop.Platform
+runtime: org.freedesktop.Sdk
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
 sdk-extensions:
@@ -8,7 +8,7 @@ command: benchhub
 
 finish-args:
   - --socket=wayland
-  - --socket=fallback-x11
+  - --socket=x11
   - --share=ipc
   - --share=network
   - --device=dri
@@ -27,6 +27,7 @@ modules:
     build-commands:
       - cargo build --release
       - install -Dm755 target/release/benchhub /app/bin/benchhub
+      - cp -r benchmarks /app/bin/benchmarks
     sources:
       - type: dir
         path: ../../

@@ -46,30 +46,66 @@ pub fn format_history_item(
     let avg_pfx = i18n::t("avg_prefix");
     let peak_pfx = i18n::t("peak_prefix");
 
-    // Formatted lines for 2-row table cells
-    let cpu_avg_line = format!(
-        "{} %{:.0} • {:.1}°C • {:.1} GHz",
-        avg_pfx,
-        run.avg_cpu_usage,
-        run.avg_cpu_temp,
-        (run.avg_cpu_freq_mhz as f32) / 1000.0
-    );
-    let cpu_peak_line = format!(
-        "{} %{:.0} • {:.1}°C • {:.1} GHz",
-        peak_pfx,
-        run.peak_cpu_usage,
-        run.peak_cpu_temp,
-        (run.peak_cpu_freq_mhz as f32) / 1000.0
-    );
+    let is_en = i18n::get_language() == "en";
 
-    let gpu_avg_line = format!(
-        "{} %{:.0} • {:.1}°C",
-        avg_pfx, run.avg_gpu_usage, run.avg_gpu_temp
-    );
-    let gpu_peak_line = format!(
-        "{} %{:.0} • {:.1}°C",
-        peak_pfx, run.peak_gpu_usage, run.peak_gpu_temp
-    );
+    // Formatted lines for 2-row table cells
+    let cpu_avg_line = if is_en {
+        format!(
+            "{} {:.0}% • {:.1}°C • {:.1} GHz",
+            avg_pfx,
+            run.avg_cpu_usage,
+            run.avg_cpu_temp,
+            (run.avg_cpu_freq_mhz as f32) / 1000.0
+        )
+    } else {
+        format!(
+            "{} %{:.0} • {:.1}°C • {:.1} GHz",
+            avg_pfx,
+            run.avg_cpu_usage,
+            run.avg_cpu_temp,
+            (run.avg_cpu_freq_mhz as f32) / 1000.0
+        )
+    };
+    let cpu_peak_line = if is_en {
+        format!(
+            "{} {:.0}% • {:.1}°C • {:.1} GHz",
+            peak_pfx,
+            run.peak_cpu_usage,
+            run.peak_cpu_temp,
+            (run.peak_cpu_freq_mhz as f32) / 1000.0
+        )
+    } else {
+        format!(
+            "{} %{:.0} • {:.1}°C • {:.1} GHz",
+            peak_pfx,
+            run.peak_cpu_usage,
+            run.peak_cpu_temp,
+            (run.peak_cpu_freq_mhz as f32) / 1000.0
+        )
+    };
+
+    let gpu_avg_line = if is_en {
+        format!(
+            "{} {:.0}% • {:.1}°C",
+            avg_pfx, run.avg_gpu_usage, run.avg_gpu_temp
+        )
+    } else {
+        format!(
+            "{} %{:.0} • {:.1}°C",
+            avg_pfx, run.avg_gpu_usage, run.avg_gpu_temp
+        )
+    };
+    let gpu_peak_line = if is_en {
+        format!(
+            "{} {:.0}% • {:.1}°C",
+            peak_pfx, run.peak_gpu_usage, run.peak_gpu_temp
+        )
+    } else {
+        format!(
+            "{} %{:.0} • {:.1}°C",
+            peak_pfx, run.peak_gpu_usage, run.peak_gpu_temp
+        )
+    };
 
     let power_ram_avg_line = format!(
         "{} {:.1} W • {:.1} GB",
@@ -80,16 +116,24 @@ pub fn format_history_item(
         peak_pfx, run.peak_power_w, run.peak_ram_gb
     );
 
-    // Detailed metrics
-    let avg_cpu_usage = format!("%{:.0}", run.avg_cpu_usage);
-    let peak_cpu_usage = format!("%{:.0}", run.peak_cpu_usage);
+    // Detailed metrics per individual column (top = avg, bottom = peak)
+    let avg_cpu_usage = if is_en {
+        format!("{:.0}%", run.avg_cpu_usage)
+    } else {
+        format!("%{:.0}", run.avg_cpu_usage)
+    };
+    let peak_cpu_usage = if is_en {
+        format!("{} {:.0}%", peak_pfx, run.peak_cpu_usage)
+    } else {
+        format!("{} %{:.0}", peak_pfx, run.peak_cpu_usage)
+    };
     let avg_cpu_temp = if run.avg_cpu_temp > 0.0 {
         format!("{:.1}°C", run.avg_cpu_temp)
     } else {
         "-".to_string()
     };
     let peak_cpu_temp = if run.peak_cpu_temp > 0.0 {
-        format!("{:.1}°C", run.peak_cpu_temp)
+        format!("{} {:.1}°C", peak_pfx, run.peak_cpu_temp)
     } else {
         "-".to_string()
     };
@@ -99,20 +143,32 @@ pub fn format_history_item(
         "-".to_string()
     };
     let peak_cpu_freq_mhz = if run.peak_cpu_freq_mhz > 0 {
-        format!("{:.1} GHz", (run.peak_cpu_freq_mhz as f32) / 1000.0)
+        format!(
+            "{} {:.1} GHz",
+            peak_pfx,
+            (run.peak_cpu_freq_mhz as f32) / 1000.0
+        )
     } else {
         "-".to_string()
     };
 
-    let avg_gpu_usage = format!("%{:.0}", run.avg_gpu_usage);
-    let peak_gpu_usage = format!("%{:.0}", run.peak_gpu_usage);
+    let avg_gpu_usage = if is_en {
+        format!("{:.0}%", run.avg_gpu_usage)
+    } else {
+        format!("%{:.0}", run.avg_gpu_usage)
+    };
+    let peak_gpu_usage = if is_en {
+        format!("{} {:.0}%", peak_pfx, run.peak_gpu_usage)
+    } else {
+        format!("{} %{:.0}", peak_pfx, run.peak_gpu_usage)
+    };
     let avg_gpu_temp = if run.avg_gpu_temp > 0.0 {
         format!("{:.1}°C", run.avg_gpu_temp)
     } else {
         "-".to_string()
     };
     let peak_gpu_temp = if run.peak_gpu_temp > 0.0 {
-        format!("{:.1}°C", run.peak_gpu_temp)
+        format!("{} {:.1}°C", peak_pfx, run.peak_gpu_temp)
     } else {
         "-".to_string()
     };
@@ -123,7 +179,7 @@ pub fn format_history_item(
         "-".to_string()
     };
     let peak_power_w = if run.peak_power_w > 0.0 {
-        format!("{:.1} W", run.peak_power_w)
+        format!("{} {:.1} W", peak_pfx, run.peak_power_w)
     } else {
         "-".to_string()
     };
@@ -134,7 +190,7 @@ pub fn format_history_item(
         "-".to_string()
     };
     let peak_ram_gb = if run.peak_ram_gb > 0.0 {
-        format!("{:.1} GB", run.peak_ram_gb)
+        format!("{} {:.1} GB", peak_pfx, run.peak_ram_gb)
     } else {
         "-".to_string()
     };
@@ -631,7 +687,7 @@ pub fn update_ui_language(ui: &AppWindow, settings: &Settings) {
         180 => 3,
         300 => 4,
         600 => 5,
-        _ => 4,
+        _ => 5,
     };
     ui.set_selected_max_duration(max_dur_str.into());
     ui.set_selected_max_duration_index(max_dur_idx);

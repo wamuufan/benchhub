@@ -9,6 +9,8 @@ export component DetailsDialog inherits Rectangle {
     height: 100%;
     z: 9999;
 
+    in-out property <int> details_run_id;
+    callback update_run_score(int, string);
     in-out property <string> details_benchmark_name;
     in-out property <string> details_category;
     in-out property <string> details_preset_version;
@@ -19,6 +21,8 @@ export component DetailsDialog inherits Rectangle {
     in-out property <string> details_date;
     in-out property <string> details_system_info;
     in-out property <string> details_log_content;
+    in-out property <[string]> details_log_links;
+    callback open_url_in_browser(string);
     in-out property <bool> show_details_log;
     in-out property <string> details_avg_cpu_usage;
     in-out property <string> details_peak_cpu_usage;
@@ -90,12 +94,16 @@ export component DetailsDialog inherits Rectangle {
                             vertical-alignment: center;
                         }
 
-                        Text {
+                        TextInput {
                             text: root.details_score;
                             font-size: 22px;
                             font-weight: 800;
                             color: Theme.success;
                             vertical-alignment: center;
+                            accepted => {
+                                root.update_run_score(root.details_run_id, self.text);
+                                self.clear-focus();
+                            }
                         }
                     }
                 }
@@ -529,6 +537,25 @@ export component DetailsDialog inherits Rectangle {
                                             font-size: 11px;
                                             color: #d1d5db;
                                             wrap: word-wrap;
+                                        }
+
+                                        if root.details_log_links.length > 0: VerticalLayout {
+                                            spacing: 8px;
+                                            Text {
+                                                text: "🌐 " + Lang.t("detected_links", Lang.current) + ":";
+                                                color: Theme.text-muted;
+                                                font-weight: 700;
+                                            }
+                                            for url in root.details_log_links: TouchArea {
+                                                mouse-cursor: pointer;
+                                                clicked => { root.open_url_in_browser(url); }
+                                                Text {
+                                                    text: url;
+                                                    color: Theme.primary;
+                                                    font-family: "monospace";
+                                                    font-weight: 700;
+                                                }
+                                            }
                                         }
                                     }
                                 }

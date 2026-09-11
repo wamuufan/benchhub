@@ -1,15 +1,33 @@
 name: benchhub
 base: core22
 version: '0.1.0'
+title: BenchHub
 summary: BenchHub Benchmark Manager
 description: A central place for benchmarks.
+license: MIT
+contact: https://github.com/wamuufan/benchhub/issues
+issues: https://github.com/wamuufan/benchhub/issues
+source-code: https://github.com/wamuufan/benchhub
+website: https://github.com/wamuufan/benchhub
 grade: stable
 confinement: strict
 
+# Derleme sırasındaki "unused library" uyarılarını susturur
+lint:
+  ignore:
+    - library
+
 parts:
+  benchmarks:
+    plugin: dump
+    source: benchmarks/
+    organize:
+      '*': bin/benchmarks/
+
   benchhub:
     plugin: rust
     source: .
+    rust-channel: stable
     build-packages:
       - build-essential
       - libsqlite3-dev
@@ -17,10 +35,54 @@ parts:
       - libfontconfig1-dev
       - libx11-dev
       - libxkbcommon-dev
+    stage-packages:
+      - libsqlite3-0
+      - wget
+      - curl
+      - xz-utils
+      - gzip
+      - bzip2
+      - unzip
+      - ca-certificates
+      - gcc
+      - g++
+      - make
+      - binutils
+      - libc6-dev
+      - linux-libc-dev
+      - libgomp1
+      - fio
+    override-prime: |
+      craftctl default
+      # Remove any staged tar to ensure the base core22 /bin/tar is always used
+      rm -f "$CRAFT_PRIME/bin/tar" "$CRAFT_PRIME/usr/bin/tar"
+      # Fix hardcoded absolute paths in staged glibc ld scripts for the staged GCC toolchain
+      for f in usr/lib/x86_64-linux-gnu/libc.so usr/lib/x86_64-linux-gnu/libpthread.so; do
+        if [ -f "$CRAFT_PRIME/$f" ]; then
+          sed -i 's|/usr/lib/x86_64-linux-gnu/||g; s|/lib/x86_64-linux-gnu/||g; s|/lib64/||g' "$CRAFT_PRIME/$f"
+        fi
+      done
+      # Symlink libceph-common.so.2 for staged fio
+      if [ -f "$CRAFT_PRIME/usr/lib/x86_64-linux-gnu/ceph/libceph-common.so.2" ]; then
+        ln -sf ceph/libceph-common.so.2 "$CRAFT_PRIME/usr/lib/x86_64-linux-gnu/libceph-common.so.2"
+      fi
 
 apps:
   benchhub:
     command: bin/benchhub
+    extensions:
+      - gnome
+    # Klavye loglarını susturur, karanlık temayı korur ve GCC derleyicisinin başlık dosyalarını görmesini sağlar
+    environment:
+      PATH: /bin:/usr/bin:$SNAP/bin:$SNAP/usr/bin:$PATH
+      LD_LIBRARY_PATH: $SNAP/usr/lib/x86_64-linux-gnu/ceph:$LD_LIBRARY_PATH
+      XKB_LOG_LEVEL: critical
+      GTK_THEME: Adwaita:dark
+      SLINT_STYLE: fluent-dark
+      CPATH: $SNAP/usr/include:$SNAP/usr/include/x86_64-linux-gnu
+      C_INCLUDE_PATH: $SNAP/usr/include:$SNAP/usr/include/x86_64-linux-gnu
+      CPLUS_INCLUDE_PATH: $SNAP/usr/include:$SNAP/usr/include/x86_64-linux-gnu
+      LIBRARY_PATH: $SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu
     plugs:
       - opengl
       - wayland

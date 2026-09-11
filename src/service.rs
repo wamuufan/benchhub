@@ -277,7 +277,14 @@ impl BenchHubService {
             gpu_throttling,
             system_info_summary: runs.last().unwrap().system_info_summary.clone(),
             log_path: log_path.to_string_lossy().to_string(),
-            power_profile: "Metodoloji".to_string(),
+            power_profile: if runs
+                .iter()
+                .all(|r| r.power_profile == runs[0].power_profile)
+            {
+                runs[0].power_profile.clone()
+            } else {
+                "Karışık".to_string()
+            },
             is_methodology: true,
             methodology_parent_id: None,
             group_name: None,

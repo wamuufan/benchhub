@@ -8,12 +8,12 @@ score_regex = "Tot:\\s+\\d+\\s+\\d+\\s+(\\d+)"
 score_unit = "MIPS"
 run_cmd = "./7zz"
 run_args = ["b"]
-download_cmd = "wget -nv -c https://github.com/ip7z/7zip/releases/download/24.08/7z2408-linux-x64.tar.xz && tar -xvf 7z2408-linux-x64.tar.xz && chmod +x 7zz"
+download_cmd = "wget -nv -c https://github.com/ip7z/7zip/releases/download/24.08/7z2408-linux-x64.tar.xz && tar --no-same-owner --no-same-permissions -xf 7z2408-linux-x64.tar.xz 7zz && chmod +x 7zz"
 
 [[versions]]
 version = "24.08"
 download_size = "~1.9 MB"
-download_cmd = "wget -nv -c https://github.com/ip7z/7zip/releases/download/24.08/7z2408-linux-x64.tar.xz && tar -xvf 7z2408-linux-x64.tar.xz && chmod +x 7zz"
+download_cmd = "wget -nv -c https://github.com/ip7z/7zip/releases/download/24.08/7z2408-linux-x64.tar.xz && tar --no-same-owner --no-same-permissions -xf 7z2408-linux-x64.tar.xz 7zz && chmod +x 7zz"
 run_cmd = "./7zz"
 run_args = ["b"]
 score_regex = "Tot:\\s+\\d+\\s+\\d+\\s+(\\d+)"

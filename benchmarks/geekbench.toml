@@ -3,7 +3,7 @@ name = "Geekbench"
 category = "Sistem & İşlemci"
 download_size = "~375 MB"
 description = "Gerçek dünya senaryolarıyla tek ve çok çekirdek sistem başarımını ölçer."
-download_cmd = "wget -nv -c https://cdn.geekbench.com/Geekbench-7.0.0-Linux.tar.gz && tar -xvzf Geekbench-7.0.0-Linux.tar.gz --strip-components=1"
+download_cmd = "wget -nv -c https://cdn.geekbench.com/Geekbench-7.0.0-Linux.tar.gz && tar --no-same-owner --no-same-permissions -xvzf Geekbench-7.0.0-Linux.tar.gz --strip-components=1"
 run_cmd = "./geekbench7"
 run_args = ["--upload"]
 score_regex = "(?:Single-Core|Multi-Core) Score\\s+(\\d+)"
@@ -13,7 +13,7 @@ default_version = "7.0.0"
 [[versions]]
 version = "7.0.0"
 download_size = "~375 MB"
-download_cmd = "wget -nv -c https://cdn.geekbench.com/Geekbench-7.0.0-Linux.tar.gz && tar -xvzf Geekbench-7.0.0-Linux.tar.gz --strip-components=1"
+download_cmd = "wget -nv -c https://cdn.geekbench.com/Geekbench-7.0.0-Linux.tar.gz && tar --no-same-owner --no-same-permissions -xvzf Geekbench-7.0.0-Linux.tar.gz --strip-components=1"
 run_cmd = "./geekbench7"
 run_args = ["--upload"]
 score_regex = "(?:Single-Core|Multi-Core) Score\\s+(\\d+)"

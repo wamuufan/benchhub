@@ -40,6 +40,8 @@ export component AppWindow inherits Window {
     in property <string> gpu_throttling_status: Lang.t("none", Lang.current);
 
     in-out property <string> terminal_output: "";
+    in-out property <[string]> terminal_links: [];
+    callback open_url_in_browser(string);
     in-out property <string> status_text: Lang.t("ready", Lang.current);
     in-out property <int> active_tab: 0;
     in-out property <bool> is_benchmark_running: false;
@@ -127,6 +129,8 @@ export component AppWindow inherits Window {
     in-out property <bool> show_install_eula: false;
 
     in-out property <bool> show_details_dialog: false;
+    in-out property <int> details_run_id: 0;
+    callback update_run_score(int, string);
     in-out property <int> details_active_tab: 0;
     in-out property <string> details_title: "";
     in-out property <string> details_benchmark_name: "";
@@ -141,6 +145,7 @@ export component AppWindow inherits Window {
     in-out property <string> details_system_info: "";
     in-out property <string> details_log_path: "";
     in-out property <string> details_log_content: "";
+    in-out property <[string]> details_log_links: [];
     in-out property <bool> show_details_log: false;
     in-out property <string> details_avg_cpu_usage: "";
     in-out property <string> details_peak_cpu_usage: "";
@@ -610,6 +615,8 @@ export component AppWindow inherits Window {
     tab1_ready <=> root.tab1_ready;
     active_tab <=> root.active_tab;
     terminal_output <=> root.terminal_output;
+    terminal_links <=> root.terminal_links;
+    open_url_in_browser(url) => { root.open_url_in_browser(url); }
     clear_terminal() => { root.clear_terminal(); }
     copy_log_to_clipboard(arg0) => { root.copy_log_to_clipboard(arg0); }
     cpu_freq: root.cpu_freq;
@@ -787,6 +794,8 @@ export component AppWindow inherits Window {
     }
 
     if root.show_details_dialog: DetailsDialog {
+        details_run_id <=> root.details_run_id;
+        update_run_score(id, score) => { root.update_run_score(id, score); }
         details_benchmark_name <=> root.details_benchmark_name;
         details_category <=> root.details_category;
         details_preset_version <=> root.details_preset_version;
@@ -797,6 +806,8 @@ export component AppWindow inherits Window {
         details_date <=> root.details_date;
         details_system_info <=> root.details_system_info;
         details_log_content <=> root.details_log_content;
+        details_log_links <=> root.details_log_links;
+        open_url_in_browser(url) => { root.open_url_in_browser(url); }
         show_details_log <=> root.show_details_log;
         details_avg_cpu_usage <=> root.details_avg_cpu_usage;
         details_peak_cpu_usage <=> root.details_peak_cpu_usage;

@@ -411,7 +411,11 @@ impl BenchmarkEngine {
         };
 
         if !status.success() {
-            anyhow::bail!("Installation failed (exit code: {})", status);
+            let code = status
+                .code()
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "terminated by signal".to_string());
+            anyhow::bail!("Installation failed (exit code: {})", code);
         }
 
         Ok(())
@@ -455,6 +459,11 @@ impl BenchmarkEngine {
                     effective_profile.name
                 ));
                 let mut command = Command::new("sh");
+                if let Ok(cur_path) = std::env::var("PATH") {
+                    if !cur_path.starts_with("/bin:") && !cur_path.starts_with("/usr/bin:") {
+                        command.env("PATH", format!("/bin:/usr/bin:{}", cur_path));
+                    }
+                }
                 command.arg("-c").arg(cmd_str).current_dir(&runner_dir);
                 inject_ssl_env(&mut command, &self.base_dir).await;
                 Self::execute_command_with_output(command, &mut on_output).await?;
@@ -504,15 +513,16 @@ impl BenchmarkEngine {
                     Self::execute_command_with_output(chmod, &mut on_output).await?;
 
                     let mut sh_run = Command::new("sh");
+                    if let Ok(cur_path) = std::env::var("PATH") {
+                        if !cur_path.starts_with("/bin:") && !cur_path.starts_with("/usr/bin:") {
+                            sh_run.env("PATH", format!("/bin:/usr/bin:{}", cur_path));
+                        }
+                    }
                     sh_run
-                        .arg(format!("./{}", run_filename))
-                        .args([
-                            "--accept",
-                            "--noexec",
-                            "--target",
-                            &extracted_dir.to_string_lossy(),
-                        ])
-                        .current_dir(&runner_dir);
+                        .env("TAR_OPTIONS", "--no-same-owner --no-same-permissions")
+                        .arg(format!("../{}", run_filename))
+                        .args(["--tar", "-xf"])
+                        .current_dir(&extracted_dir);
                     Self::execute_command_with_output(sh_run, &mut on_output).await?;
                 }
             } else {
@@ -1334,24 +1344,7 @@ pub fn find_system_ca_dir() -> Option<PathBuf> {
     None
 }
 
-pub async fn ensure_ssl_shim(base_dir: &Path) -> Option<PathBuf> {
-    let shim_path = base_dir.join("libssl_shim.so");
-    if tokio::fs::try_exists(&shim_path).await.unwrap_or(false) {
-        return Some(shim_path);
-    }
-
-    let embedded_shim = include_bytes!(concat!(env!("OUT_DIR"), "/libssl_shim.so"));
-    if tokio::fs::write(&shim_path, embedded_shim).await.is_ok() {
-        return Some(shim_path);
-    }
-
-    None
-}
-
-async fn inject_ssl_env(cmd: &mut Command, base_dir: &Path) {
-    if let Some(shim) = ensure_ssl_shim(base_dir).await {
-        cmd.env("LD_PRELOAD", &shim);
-    }
+async fn inject_ssl_env(cmd: &mut Command, _base_dir: &Path) {
     if let Some(ca) = find_system_ca_bundle() {
         cmd.env("SSL_CERT_FILE", &ca);
         cmd.env("CURL_CA_BUNDLE", &ca);
@@ -1382,8 +1375,19 @@ pub fn inject_gpu_env(cmd: &mut Command, gpu_mode: GpuMode) {
         GpuMode::NvidiaDgpu => {
             cmd.env("__NV_PRIME_RENDER_OFFLOAD", "1");
             cmd.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia");
-            cmd.env("__VK_LAYER_NV_optimus", "NVIDIA_only");
             cmd.env("DRI_PRIME", "1");
+            if std::env::var("SNAP").is_ok() {
+                let icd_path = std::env::var("SNAP_USER_DATA")
+                    .unwrap_or_else(|_| "/tmp".to_string())
+                    + "/nvidia_icd.json";
+                if !std::path::Path::new(&icd_path).exists() {
+                    let _ = std::fs::write(
+                        &icd_path,
+                        r#"{"file_format_version":"1.0.0","ICD":{"library_path":"/var/lib/snapd/lib/gl/libGLX_nvidia.so.0","api_version":"1.3.0"}}"#,
+                    );
+                }
+                cmd.env("VK_ICD_FILENAMES", icd_path);
+            }
         }
         GpuMode::Integrated => {
             cmd.env("__NV_PRIME_RENDER_OFFLOAD", "0");

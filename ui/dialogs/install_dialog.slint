@@ -118,6 +118,7 @@ export component InstallDialog inherits Rectangle {
                     StatusBadge {
                         text: root.install_dialog_status;
                         status: root.is_installing ? "warning" : (root.install_finished ? (root.install_success ? "success" : "danger") : "primary");
+                        max_badge_width: 200px;
                     }
                 }
             }

@@ -184,13 +184,15 @@ pub fn register_engine_callbacks(ui: &AppWindow, app_state: &AppState) {
 
                     if is_success {
                         ui.set_install_dialog_status(
-                            benchhub::i18n::t("status_install_success").into(),
+                            benchhub::i18n::t("status_install_success_badge").into(),
                         );
                         ui.set_status_text(benchhub::i18n::t("status_install_success").into());
                     } else if let Some(ref err) = err_msg {
                         let err_str =
                             benchhub::i18n::t("status_install_error").replace("{}", err.as_str());
-                        ui.set_install_dialog_status(err_str.clone().into());
+                        ui.set_install_dialog_status(
+                            benchhub::i18n::t("status_install_failed").into(),
+                        );
                         ui.set_status_text(err_str.into());
                     }
                 }

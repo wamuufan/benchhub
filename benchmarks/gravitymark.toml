@@ -8,12 +8,12 @@ score_regex = "(?i)Score:\\s*([0-9]+)"
 score_unit = "Puan"
 run_cmd = "./gravitymark"
 run_args = ["-temporal", "1", "-close", "1", "-sensors", "1", "-benchmark", "1", "-vk"]
-download_cmd = "wget -q --show-progress -c https://tellusim.com/download/GravityMark_1.89.run -O gravitymark.run && chmod +x gravitymark.run && ./gravitymark.run --tar -xf && rm -f gravitymark.run && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR/bin\" || exit 1\\nexport LD_LIBRARY_PATH=\"$DIR/bin:$LD_LIBRARY_PATH\"\\nexec ./GravityMark.x64 \"$@\"\\n' > gravitymark && chmod +x gravitymark"
+download_cmd = "wget -q  -c https://tellusim.com/download/GravityMark_1.89.run -O gravitymark.run && chmod +x gravitymark.run && export TAR_OPTIONS='--no-same-owner --no-same-permissions' && ./gravitymark.run --tar -xf && rm -f gravitymark.run && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR/bin\" || exit 1\\nexport LD_LIBRARY_PATH=\"$DIR/bin:$LD_LIBRARY_PATH\"\\necho \"\" | ./GravityMark.x64 \"$@\"\\n' > gravitymark && chmod +x gravitymark"
 
 [[versions]]
 version = "vulkan"
 download_size = "~190 MB"
-download_cmd = "wget -q --show-progress -c https://tellusim.com/download/GravityMark_1.89.run -O gravitymark.run && chmod +x gravitymark.run && ./gravitymark.run --tar -xf && rm -f gravitymark.run && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR/bin\" || exit 1\\nexport LD_LIBRARY_PATH=\"$DIR/bin:$LD_LIBRARY_PATH\"\\nexec ./GravityMark.x64 \"$@\"\\n' > gravitymark && chmod +x gravitymark"
+download_cmd = "wget -q  -c https://tellusim.com/download/GravityMark_1.89.run -O gravitymark.run && chmod +x gravitymark.run && export TAR_OPTIONS='--no-same-owner --no-same-permissions' && ./gravitymark.run --tar -xf && rm -f gravitymark.run && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR/bin\" || exit 1\\nexport LD_LIBRARY_PATH=\"$DIR/bin:$LD_LIBRARY_PATH\"\\necho \"\" | ./GravityMark.x64 \"$@\"\\n' > gravitymark && chmod +x gravitymark"
 run_cmd = "./gravitymark"
 run_args = ["-temporal", "1", "-close", "1", "-sensors", "1", "-benchmark", "1", "-vk"]
 score_regex = "(?i)Score:\\s*([0-9]+)"
@@ -22,7 +22,7 @@ score_unit = "Puan"
 [[versions]]
 version = "opengl"
 download_size = "~190 MB"
-download_cmd = "wget -q --show-progress -c https://tellusim.com/download/GravityMark_1.89.run -O gravitymark.run && chmod +x gravitymark.run && ./gravitymark.run --tar -xf && rm -f gravitymark.run && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR/bin\" || exit 1\\nexport LD_LIBRARY_PATH=\"$DIR/bin:$LD_LIBRARY_PATH\"\\nexec ./GravityMark.x64 \"$@\"\\n' > gravitymark && chmod +x gravitymark"
+download_cmd = "wget -q  -c https://tellusim.com/download/GravityMark_1.89.run -O gravitymark.run && chmod +x gravitymark.run && export TAR_OPTIONS='--no-same-owner --no-same-permissions' && ./gravitymark.run --tar -xf && rm -f gravitymark.run && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR/bin\" || exit 1\\nexport LD_LIBRARY_PATH=\"$DIR/bin:$LD_LIBRARY_PATH\"\\necho \"\" | ./GravityMark.x64 \"$@\"\\n' > gravitymark && chmod +x gravitymark"
 run_cmd = "./gravitymark"
 run_args = ["-temporal", "1", "-close", "1", "-sensors", "1", "-benchmark", "1", "-gl"]
 score_regex = "(?i)Score:\\s*([0-9]+)"

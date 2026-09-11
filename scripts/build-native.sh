@@ -14,6 +14,7 @@ mkdir -p "$DIST_DIR/libs"
 
 # Copy binary
 cp target/release/benchhub "$DIST_DIR/"
+cp -r benchmarks "$DIST_DIR/"
 
 # Copy libssl_shim.so
 SSL_SHIM=$(find target/release/build -name "libssl_shim.so" | head -n 1)

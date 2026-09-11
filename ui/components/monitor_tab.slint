@@ -16,6 +16,8 @@ export component MonitorTab inherits VerticalLayout {
     in-out property <bool> tab1_ready;
     in-out property <int> active_tab;
     in-out property <string> terminal_output;
+    in-out property <[string]> terminal_links;
+    callback open_url_in_browser(string);
     callback clear_terminal();
     callback copy_log_to_clipboard(string);
     in property <float> cpu_freq;
@@ -183,6 +185,25 @@ export component MonitorTab inherits VerticalLayout {
                                             font-size: 12px;
                                             color: #d1d5db;
                                             wrap: word-wrap;
+                                        }
+
+                                        if root.terminal_links.length > 0: VerticalLayout {
+                                            spacing: 8px;
+                                            Text {
+                                                text: "🌐 " + Lang.t("detected_links", Lang.current) + ":";
+                                                color: Theme.text-muted;
+                                                font-weight: 700;
+                                            }
+                                            for url in root.terminal_links: TouchArea {
+                                                mouse-cursor: pointer;
+                                                clicked => { root.open_url_in_browser(url); }
+                                                Text {
+                                                    text: url;
+                                                    color: Theme.primary;
+                                                    font-family: "monospace";
+                                                    font-weight: 700;
+                                                }
+                                            }
                                         }
                                     }
                                 }

@@ -6,7 +6,7 @@ pub const DEFAULT_TELEMETRY_INTERVAL_MS: u64 = 500;
 pub const DEFAULT_TERMINAL_BUFFER_LINES: usize = 150;
 pub const DEFAULT_SAVE_STOPPED_RUNS: bool = true;
 pub const DEFAULT_SELECTED_GPU_MODE: &str = "Harici GPU (NVIDIA)";
-pub const DEFAULT_MAX_TEST_DURATION_SECS: u64 = 300;
+pub const DEFAULT_MAX_TEST_DURATION_SECS: u64 = 600;
 
 pub const VALID_TELEMETRY_INTERVALS: [u64; 4] = [250, 500, 1000, 2000];
 pub const VALID_MAX_TEST_DURATIONS: [u64; 6] = [0, 60, 120, 180, 300, 600];
@@ -311,7 +311,7 @@ mod tests {
         assert!(defaults.save_stopped_runs);
         assert_eq!(defaults.selected_gpu_mode, "Harici GPU (NVIDIA)");
         assert_eq!(defaults.language, "tr");
-        assert_eq!(defaults.max_test_duration_secs, 300);
+        assert_eq!(defaults.max_test_duration_secs, 600);
     }
 
     #[test]
@@ -329,7 +329,7 @@ mod tests {
         assert_eq!(s.terminal_buffer_lines, 50);
         assert_eq!(s.selected_gpu_mode, "System Default");
         assert_eq!(s.language, "tr");
-        assert_eq!(s.max_test_duration_secs, 300);
+        assert_eq!(s.max_test_duration_secs, 600);
 
         let mut s2 = AppSettings {
             telemetry_interval_ms: 1000,

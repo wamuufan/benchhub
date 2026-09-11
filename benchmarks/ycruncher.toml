@@ -8,12 +8,12 @@ score_regex = "Total Computation Time:[^\\d]*([0-9\\.]+)"
 score_unit = "Saniye (düşük=iyi)"
 run_cmd = "./y-cruncher"
 run_args = ["pause:0", "skip-warnings", "bench", "500m", "-od:0"]
-download_cmd = "wget -q --show-progress -c https://github.com/Mysticial/y-cruncher/releases/download/v0.8.7.9547/y-cruncher.v0.8.7.9547-static.tar.xz -O ycruncher.tar.xz && tar -xf ycruncher.tar.xz --strip-components=1 && rm -f ycruncher.tar.xz && ln -sf y-cruncher ycruncher && chmod +x y-cruncher ycruncher"
+download_cmd = "wget -q  -c https://github.com/Mysticial/y-cruncher/releases/download/v0.8.7.9547/y-cruncher.v0.8.7.9547-static.tar.xz -O ycruncher.tar.xz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='Custom Formulas*' --exclude='*Digits*' -xf ycruncher.tar.xz --strip-components=1 && rm -f ycruncher.tar.xz && ln -sf y-cruncher ycruncher && chmod +x y-cruncher ycruncher"
 
 [[versions]]
 version = "500M"
 download_size = "~35 MB"
-download_cmd = "wget -q --show-progress -c https://github.com/Mysticial/y-cruncher/releases/download/v0.8.7.9547/y-cruncher.v0.8.7.9547-static.tar.xz -O ycruncher.tar.xz && tar -xf ycruncher.tar.xz --strip-components=1 && rm -f ycruncher.tar.xz && ln -sf y-cruncher ycruncher && chmod +x y-cruncher ycruncher"
+download_cmd = "wget -q  -c https://github.com/Mysticial/y-cruncher/releases/download/v0.8.7.9547/y-cruncher.v0.8.7.9547-static.tar.xz -O ycruncher.tar.xz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='Custom Formulas*' --exclude='*Digits*' -xf ycruncher.tar.xz --strip-components=1 && rm -f ycruncher.tar.xz && ln -sf y-cruncher ycruncher && chmod +x y-cruncher ycruncher"
 run_cmd = "./y-cruncher"
 run_args = ["pause:0", "skip-warnings", "bench", "500m", "-od:0"]
 score_regex = "Total Computation Time:[^\\d]*([0-9\\.]+)"
@@ -22,7 +22,7 @@ score_unit = "Saniye (düşük=iyi)"
 [[versions]]
 version = "25M"
 download_size = "~35 MB"
-download_cmd = "wget -q --show-progress -c https://github.com/Mysticial/y-cruncher/releases/download/v0.8.7.9547/y-cruncher.v0.8.7.9547-static.tar.xz -O ycruncher.tar.xz && tar -xf ycruncher.tar.xz --strip-components=1 && rm -f ycruncher.tar.xz && ln -sf y-cruncher ycruncher && chmod +x y-cruncher ycruncher"
+download_cmd = "wget -q  -c https://github.com/Mysticial/y-cruncher/releases/download/v0.8.7.9547/y-cruncher.v0.8.7.9547-static.tar.xz -O ycruncher.tar.xz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='Custom Formulas*' --exclude='*Digits*' -xf ycruncher.tar.xz --strip-components=1 && rm -f ycruncher.tar.xz && ln -sf y-cruncher ycruncher && chmod +x y-cruncher ycruncher"
 run_cmd = "./y-cruncher"
 run_args = ["pause:0", "skip-warnings", "bench", "25m", "-od:0"]
 score_regex = "Total Computation Time:[^\\d]*([0-9\\.]+)"
@@ -31,7 +31,7 @@ score_unit = "Saniye (düşük=iyi)"
 [[versions]]
 version = "1B"
 download_size = "~35 MB"
-download_cmd = "wget -q --show-progress -c https://github.com/Mysticial/y-cruncher/releases/download/v0.8.7.9547/y-cruncher.v0.8.7.9547-static.tar.xz -O ycruncher.tar.xz && tar -xf ycruncher.tar.xz --strip-components=1 && rm -f ycruncher.tar.xz && ln -sf y-cruncher ycruncher && chmod +x y-cruncher ycruncher"
+download_cmd = "wget -q  -c https://github.com/Mysticial/y-cruncher/releases/download/v0.8.7.9547/y-cruncher.v0.8.7.9547-static.tar.xz -O ycruncher.tar.xz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='Custom Formulas*' --exclude='*Digits*' -xf ycruncher.tar.xz --strip-components=1 && rm -f ycruncher.tar.xz && ln -sf y-cruncher ycruncher && chmod +x y-cruncher ycruncher"
 run_cmd = "./y-cruncher"
 run_args = ["pause:0", "skip-warnings", "bench", "1b", "-od:0"]
 score_regex = "Total Computation Time:[^\\d]*([0-9\\.]+)"

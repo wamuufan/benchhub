@@ -588,7 +588,7 @@ export component HistoryTab inherits VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_cpu_usage; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
-                                            Text { text: item.cpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                            Text { text: item.peak_cpu_usage; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
 
@@ -600,7 +600,7 @@ export component HistoryTab inherits VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_cpu_temp; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
-                                            Text { text: item.cpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                            Text { text: item.peak_cpu_temp; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
 
@@ -612,7 +612,7 @@ export component HistoryTab inherits VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_cpu_freq_mhz; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
-                                            Text { text: item.cpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                            Text { text: item.peak_cpu_freq_mhz; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
 
@@ -624,7 +624,7 @@ export component HistoryTab inherits VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_gpu_usage; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
-                                            Text { text: item.gpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                            Text { text: item.peak_gpu_usage; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
 
@@ -636,7 +636,7 @@ export component HistoryTab inherits VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_gpu_temp; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
-                                            Text { text: item.gpu_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                            Text { text: item.peak_gpu_temp; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
 
@@ -648,7 +648,7 @@ export component HistoryTab inherits VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_power_w; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
-                                            Text { text: item.power_ram_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                            Text { text: item.peak_power_w; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
 
@@ -660,7 +660,7 @@ export component HistoryTab inherits VerticalLayout {
                                             alignment: center;
                                             spacing: 2px;
                                             Text { text: item.avg_ram_gb; font-size: 12px; font-weight: 600; color: Theme.text-main; horizontal-alignment: center; }
-                                            Text { text: item.power_ram_peak_line; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
+                                            Text { text: item.peak_ram_gb; font-size: 10px; color: Theme.text-muted; horizontal-alignment: center; }
                                         }
                                     }
 

@@ -201,6 +201,14 @@ pub fn register_log_callbacks(ui: &AppWindow, app_state: &AppState) {
                 };
                 let _ = slint::invoke_from_event_loop(move || {
                     if let Some(ui) = ui_weak.upgrade() {
+                        let re = regex::Regex::new(r"https?://[^\s]+").unwrap();
+                        let links: Vec<slint::SharedString> = re
+                            .find_iter(&log_content)
+                            .map(|m| m.as_str().into())
+                            .collect();
+
+                        let links_model = std::rc::Rc::new(slint::VecModel::from(links));
+                        ui.set_details_log_links(links_model.into());
                         ui.set_details_log_content(log_content.into());
                     }
                 });
@@ -209,6 +217,7 @@ pub fn register_log_callbacks(ui: &AppWindow, app_state: &AppState) {
     });
 
     // Callback: Copy Log to Clipboard
+    let _ui_weak_copy = ui.as_weak();
     ui.on_copy_log_to_clipboard(move |text| {
         let text_to_copy = text.to_string();
         tokio::spawn(async move {
@@ -216,5 +225,10 @@ pub fn register_log_callbacks(ui: &AppWindow, app_state: &AppState) {
                 tracing::error!("Failed to copy to clipboard: {}", e);
             }
         });
+    });
+
+    // Callback: Open URL in Browser
+    ui.on_open_url_in_browser(move |url| {
+        let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
     });
 }

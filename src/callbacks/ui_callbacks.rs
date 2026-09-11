@@ -1254,6 +1254,7 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
                 ui.set_details_preset_version(run.preset_or_version.into());
                 ui.set_details_gpu_mode(gpu_mode_display.into());
                 ui.set_details_power_profile(power_profile_display.into());
+                ui.set_details_run_id(id);
                 ui.set_details_score(score_str.into());
                 ui.set_details_status(status_display.into());
                 ui.set_details_duration(duration_str.into());
@@ -1311,6 +1312,26 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
             let default_name = get_next_default_group_name(&db_open_group);
             ui.set_group_dialog_name(default_name.into());
             ui.set_show_group_dialog(true);
+        }
+    });
+
+    // Callback: Update Run Score Manually
+    let ui_weak_update_score = ui.as_weak();
+    let service_update_score = app_state.service.clone();
+    let filter_update_score = history_filter_state.clone();
+    ui.on_update_run_score(move |id, score_str| {
+        let parsed_score = score_str.trim().parse::<f64>().ok();
+        if let Ok(Some(mut run)) = service_update_score.get_run_by_id(id as i64) {
+            run.score = parsed_score;
+            let _ = service_update_score.db.update_run(&run);
+
+            // Refresh history view
+            if let Some(ui) = ui_weak_update_score.upgrade() {
+                let filter = filter_update_score
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
+                refresh_history_view(&ui, &service_update_score.db, &filter);
+            }
         }
     });
 

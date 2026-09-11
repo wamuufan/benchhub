@@ -156,8 +156,6 @@ async fn test_gpu_mode_environment_injection() {
         && v.as_deref() == Some(std::ffi::OsStr::new("1"))));
     assert!(envs.iter().any(|(k, v)| k == "__GLX_VENDOR_LIBRARY_NAME"
         && v.as_deref() == Some(std::ffi::OsStr::new("nvidia"))));
-    assert!(envs.iter().any(|(k, v)| k == "__VK_LAYER_NV_optimus"
-        && v.as_deref() == Some(std::ffi::OsStr::new("NVIDIA_only"))));
     assert!(envs
         .iter()
         .any(|(k, v)| k == "DRI_PRIME" && v.as_deref() == Some(std::ffi::OsStr::new("1"))));

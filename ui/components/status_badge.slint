@@ -4,8 +4,10 @@ export component StatusBadge inherits Rectangle {
     in property <string> text;
     in property <string> status: "success"; // "success", "warning", "danger", "muted"
     in property <length> badge_height: 28px;
+    in property <length> max_badge_width: 300px;
 
     height: root.badge_height;
+    max-width: root.max_badge_width;
     border-radius: Theme.radius-sm;
     background: Theme.surface;
     border-width: 1px;
@@ -40,6 +42,7 @@ export component StatusBadge inherits Rectangle {
                    status == "warning" ? Theme.warning :
                    status == "danger" ? Theme.danger : Theme.text-muted;
             vertical-alignment: center;
+            overflow: elide;
         }
     }
 }

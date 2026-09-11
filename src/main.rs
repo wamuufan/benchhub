@@ -21,6 +21,14 @@ use crate::ui::setup_initial_ui;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Ensure dark theme for Slint standard widgets (ComboBox, Button, etc.) and GTK
+    if std::env::var("SLINT_STYLE").is_err() {
+        std::env::set_var("SLINT_STYLE", "fluent-dark");
+    }
+    if std::env::var("GTK_THEME").is_err() {
+        std::env::set_var("GTK_THEME", "Adwaita:dark");
+    }
+
     // Initialize tracing logging and channel
     let (log_tx, log_rx) = mpsc::channel::<String>(1024);
     benchhub::logging::init_tracing(log_tx);

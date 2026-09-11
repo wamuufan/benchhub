@@ -3,17 +3,17 @@ name = "llama-bench"
 category = "Yapay Zeka"
 download_size = "~40 MB"
 description = "llama.cpp tabanlı LLM çıkarım (inference) hız testi. CPU ve GPU token/saniye performansını ölçer."
-default_version = "Fast (stories260K)"
+default_version = "Standard (stories15M)"
 score_regex = "\\|\\s*tg\\d*\\s*\\|\\s*([\\d\\.]+)\\s*±"
 score_unit = "token/s"
 run_cmd = "./run-llama-bench"
 run_args = ["-m", "stories260K.gguf", "-p", "512", "-n", "128", "-r", "5", "-o", "md"]
-download_cmd = "wget -q --show-progress -c https://github.com/ggml-org/llama.cpp/releases/download/b10729/llama-b10729-bin-ubuntu-x64.tar.gz -O llama.tar.gz && tar -xzf llama.tar.gz --strip-components=1 && rm -f llama.tar.gz && wget -q --show-progress -c https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories260K.gguf -O stories260K.gguf && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR\"\\nexport LD_LIBRARY_PATH=\"$DIR:$LD_LIBRARY_PATH\"\\nexec \"$DIR/llama-bench\" \"$@\"\\n' > run-llama-bench && chmod +x llama-bench run-llama-bench"
+download_cmd = "wget -q  -c https://github.com/ggml-org/llama.cpp/releases/download/b10729/llama-b10729-bin-ubuntu-x64.tar.gz -O llama.tar.gz && tar --no-same-owner --no-same-permissions -xzf llama.tar.gz --strip-components=1 && rm -f llama.tar.gz && wget -q  -c https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories260K.gguf -O stories260K.gguf && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR\"\\nexport LD_LIBRARY_PATH=\"$DIR:$LD_LIBRARY_PATH\"\\nexec \"$DIR/llama-bench\" \"$@\"\\n' > run-llama-bench && chmod +x llama-bench run-llama-bench"
 
 [[versions]]
 version = "Fast (stories260K)"
 download_size = "~40 MB"
-download_cmd = "wget -q --show-progress -c https://github.com/ggml-org/llama.cpp/releases/download/b10729/llama-b10729-bin-ubuntu-x64.tar.gz -O llama.tar.gz && tar -xzf llama.tar.gz --strip-components=1 && rm -f llama.tar.gz && wget -q --show-progress -c https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories260K.gguf -O stories260K.gguf && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR\"\\nexport LD_LIBRARY_PATH=\"$DIR:$LD_LIBRARY_PATH\"\\nexec \"$DIR/llama-bench\" \"$@\"\\n' > run-llama-bench && chmod +x llama-bench run-llama-bench"
+download_cmd = "wget -q  -c https://github.com/ggml-org/llama.cpp/releases/download/b10729/llama-b10729-bin-ubuntu-x64.tar.gz -O llama.tar.gz && tar --no-same-owner --no-same-permissions -xzf llama.tar.gz --strip-components=1 && rm -f llama.tar.gz && wget -q  -c https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories260K.gguf -O stories260K.gguf && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR\"\\nexport LD_LIBRARY_PATH=\"$DIR:$LD_LIBRARY_PATH\"\\nexec \"$DIR/llama-bench\" \"$@\"\\n' > run-llama-bench && chmod +x llama-bench run-llama-bench"
 run_cmd = "./run-llama-bench"
 run_args = ["-m", "stories260K.gguf", "-p", "512", "-n", "128", "-r", "5", "-o", "md"]
 score_regex = "\\|\\s*tg\\d*\\s*\\|\\s*([\\d\\.]+)\\s*±"
@@ -22,7 +22,7 @@ score_unit = "token/s"
 [[versions]]
 version = "Standard (stories15M)"
 download_size = "~55 MB"
-download_cmd = "wget -q --show-progress -c https://github.com/ggml-org/llama.cpp/releases/download/b10729/llama-b10729-bin-ubuntu-x64.tar.gz -O llama.tar.gz && tar -xzf llama.tar.gz --strip-components=1 && rm -f llama.tar.gz && wget -q --show-progress -c https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories15M.gguf -O stories15M.gguf && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR\"\\nexport LD_LIBRARY_PATH=\"$DIR:$LD_LIBRARY_PATH\"\\nexec \"$DIR/llama-bench\" \"$@\"\\n' > run-llama-bench && chmod +x llama-bench run-llama-bench"
+download_cmd = "wget -q  -c https://github.com/ggml-org/llama.cpp/releases/download/b10729/llama-b10729-bin-ubuntu-x64.tar.gz -O llama.tar.gz && tar --no-same-owner --no-same-permissions -xzf llama.tar.gz --strip-components=1 && rm -f llama.tar.gz && wget -q  -c https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories15M.gguf -O stories15M.gguf && printf '#!/bin/sh\\nDIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\\ncd \"$DIR\"\\nexport LD_LIBRARY_PATH=\"$DIR:$LD_LIBRARY_PATH\"\\nexec \"$DIR/llama-bench\" \"$@\"\\n' > run-llama-bench && chmod +x llama-bench run-llama-bench"
 run_cmd = "./run-llama-bench"
 run_args = ["-m", "stories15M.gguf", "-p", "512", "-n", "128", "-r", "3", "-o", "md"]
 score_regex = "\\|\\s*tg\\d*\\s*\\|\\s*([\\d\\.]+)\\s*±"

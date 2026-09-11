@@ -595,7 +595,10 @@ fn test_llama_bench_manifest_loading() {
     let llama: benchhub::models::BenchmarkProfile =
         toml::from_str(&llama_content).expect("llama-bench.toml should parse");
     assert_eq!(llama.id, "llama-bench");
-    assert_eq!(llama.default_version.as_deref(), Some("Fast (stories260K)"));
+    assert_eq!(
+        llama.default_version.as_deref(),
+        Some("Standard (stories15M)")
+    );
     assert_eq!(llama.versions.len(), 2);
 }
 

@@ -151,7 +151,67 @@ rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 
 ---
 
+### D. openSUSE Tumbleweed Dependencies
+For users on openSUSE Tumbleweed, you can install the equivalent system dependencies using `zypper`:
+
+```bash
+sudo zypper install gcc make pkgconf openssl-devel fontconfig-devel libX11-devel libxcb-devel libxkbcommon-devel
+```
+
+---
+
+## 6. Building Distribution Packages (Flatpak, Snap, Native Tarball)
+
+BenchHub provides automated scripts in the `scripts/` directory to generate distribution-ready packages.
+
+### Flatpak
+To build an offline Flatpak bundle (`.flatpak`), you need the Flatpak SDKs:
+
+```bash
+# 1. Install Flatpak Builder
+# Ubuntu: sudo apt install flatpak-builder
+# openSUSE: sudo zypper install flatpak-builder
+
+# 2. Add Flathub repository
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+# 3. Install required Freedesktop SDKs and Rust toolchain
+flatpak install flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08
+
+# 4. Build the package
+./scripts/build-flatpak.sh
+```
+
+### Snap (via LXD)
+To build a strict Snap package, your system must have LXD initialized, and your user must have LXD group permissions:
+
+```bash
+# 1. Install Snapcraft and LXD
+sudo snap install snapcraft --classic
+sudo snap install lxd
+
+# 2. Initialize LXD (Accept defaults with Enter)
+sudo lxd init --auto
+
+# 3. Grant your user LXD permissions
+sudo usermod -aG lxd $USER
+# NOTE: You MUST restart your computer or log out and back in for the new group permissions to apply.
+
+# 4. Build the package
+./scripts/build-snap.sh
+```
+
+### Portable Native Tarball
+To generate a self-contained `.tar.gz` archive containing the binary and its dynamic library dependencies:
+
+```bash
+./scripts/build-native.sh
+```
+
+---
+
 ## 5. Troubleshooting
+
 
 ### `error: linker 'clang' not found`
 * **Cause:** An old, machine-specific `.cargo/config.toml` may be present in your working tree.

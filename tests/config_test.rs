@@ -17,7 +17,7 @@ fn test_config_defaults() {
     );
     assert_eq!(settings.save_stopped_runs, DEFAULT_SAVE_STOPPED_RUNS);
     assert_eq!(settings.selected_gpu_mode, DEFAULT_SELECTED_GPU_MODE);
-    assert_eq!(settings.max_test_duration_secs, 300);
+    assert_eq!(settings.max_test_duration_secs, 600);
 }
 
 #[test]
@@ -36,7 +36,7 @@ fn test_config_boundary_validations_and_sanitization() {
     assert_eq!(settings.telemetry_interval_ms, 500);
     assert_eq!(settings.terminal_buffer_lines, 50);
     assert_eq!(settings.selected_gpu_mode, "System Default");
-    assert_eq!(settings.max_test_duration_secs, 300);
+    assert_eq!(settings.max_test_duration_secs, 600);
 
     let mut upper_settings = AppSettings {
         telemetry_interval_ms: 2000,

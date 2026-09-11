@@ -71,8 +71,22 @@ pub fn format_bytes(bytes: u64) -> String {
 
 pub async fn load_profiles() -> Result<Vec<benchhub::models::BenchmarkProfile>> {
     let mut profiles = Vec::new();
-    let dir = std::path::Path::new("benchmarks");
-    if !fs::try_exists(dir).await.unwrap_or(false) {
+    let mut dir = std::path::PathBuf::from("benchmarks");
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            let exe_dir = parent.join("benchmarks");
+            if exe_dir.exists() {
+                dir = exe_dir;
+            } else if let Some(parent_parent) = parent.parent() {
+                let bin_parent_dir = parent_parent.join("bin").join("benchmarks");
+                if bin_parent_dir.exists() {
+                    dir = bin_parent_dir;
+                }
+            }
+        }
+    }
+
+    if !fs::try_exists(&dir).await.unwrap_or(false) {
         return Ok(profiles);
     }
     let mut entries = fs::read_dir(dir).await?;
@@ -409,6 +423,12 @@ pub fn spawn_terminal_flusher(
                         let new_len = text_to_set.len();
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui) = ui_w.upgrade() {
+                                static URL_RE: std::sync::LazyLock<regex::Regex> =
+                                    std::sync::LazyLock::new(|| regex::Regex::new(r"https?://[^\s]+").unwrap());
+                                let links: Vec<slint::SharedString> = URL_RE.find_iter(&text_to_set).map(|m| m.as_str().into()).collect();
+                                let links_model = std::rc::Rc::new(slint::VecModel::from(links));
+
+                                ui.set_terminal_links(links_model.into());
                                 ui.set_terminal_output(text_to_set.into());
                             }
                         });
