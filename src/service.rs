@@ -50,11 +50,10 @@ impl BenchHubService {
     }
 
     pub async fn clean_all_runners(&self) -> anyhow::Result<()> {
-        let runners_dir = self.data_dir.join("runners");
+        let runners_dir = self.engine.get_runners_dir();
         if runners_dir.exists() {
-            let safe_runners_dir = crate::utils::ensure_path_within(&self.data_dir, &runners_dir)?;
-            tokio::fs::remove_dir_all(&safe_runners_dir).await?;
-            tokio::fs::create_dir_all(&safe_runners_dir).await?;
+            tokio::fs::remove_dir_all(&runners_dir).await?;
+            tokio::fs::create_dir_all(&runners_dir).await?;
         }
         Ok(())
     }

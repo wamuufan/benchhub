@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use regex::Regex;
 use std::path::{Component, Path, PathBuf};
 use std::sync::OnceLock;
@@ -179,6 +179,82 @@ pub fn ensure_path_within(base_dir: &Path, target: &Path) -> Result<PathBuf> {
 /// Helper returning bool whether `target` is safely within `base_dir`.
 pub fn is_safe_path(base_dir: &Path, target: &Path) -> bool {
     ensure_path_within(base_dir, target).is_ok()
+}
+
+/// Attempts to detect a shared data directory across containerized/package formats (Flatpak, Snap)
+/// so that benchmark runners and data are shared with the host system (~/.local/share/benchhub).
+pub fn resolve_shared_data_dir() -> Option<PathBuf> {
+    // 1. If running inside Flatpak (FLATPAK_ID is set or /.flatpak-info exists)
+    let is_flatpak = std::env::var("FLATPAK_ID").is_ok() || Path::new("/.flatpak-info").exists();
+    if is_flatpak {
+        if let Some(home) = dirs::home_dir() {
+            let host_data = home.join(".local").join("share").join("benchhub");
+            if host_data.exists() || std::fs::create_dir_all(&host_data).is_ok() {
+                return Some(host_data);
+            }
+        }
+    }
+
+    // 2. If running inside Snap (SNAP is set)
+    if std::env::var("SNAP").is_ok() {
+        if let Ok(real_home) = std::env::var("SNAP_REAL_HOME") {
+            let host_data = PathBuf::from(real_home)
+                .join(".local")
+                .join("share")
+                .join("benchhub");
+            if host_data.exists() || std::fs::create_dir_all(&host_data).is_ok() {
+                return Some(host_data);
+            }
+        }
+        if let Ok(user) = std::env::var("USER") {
+            let host_data = PathBuf::from(format!("/home/{}/.local/share/benchhub", user));
+            if host_data.exists() || std::fs::create_dir_all(&host_data).is_ok() {
+                return Some(host_data);
+            }
+        }
+        if let Some(home) = dirs::home_dir() {
+            let host_data = home.join(".local").join("share").join("benchhub");
+            if host_data.exists() || std::fs::create_dir_all(&host_data).is_ok() {
+                return Some(host_data);
+            }
+        }
+    }
+
+    None
+}
+
+/// Resolves the BenchHub application data directory.
+/// Prefers shared host data directory if in Flatpak/Snap, otherwise falls back to XDG data dir (`dirs::data_dir()`).
+pub fn get_data_dir() -> Result<PathBuf> {
+    if let Some(shared) = resolve_shared_data_dir() {
+        if std::fs::create_dir_all(&shared).is_ok() {
+            return Ok(shared);
+        }
+    }
+
+    let base = dirs::data_dir()
+        .ok_or_else(|| anyhow::anyhow!("Failed to determine user data directory"))?;
+    let path = base.join("benchhub");
+    std::fs::create_dir_all(&path)
+        .with_context(|| format!("Failed to create data directory: {:?}", path))?;
+    Ok(path)
+}
+
+/// Asynchronously ensures that the BenchHub application data directory exists and returns it.
+pub async fn ensure_data_dir() -> Result<PathBuf> {
+    if let Some(shared) = resolve_shared_data_dir() {
+        if tokio::fs::create_dir_all(&shared).await.is_ok() {
+            return Ok(shared);
+        }
+    }
+
+    let base = dirs::data_dir()
+        .ok_or_else(|| anyhow::anyhow!("Failed to determine user data directory"))?;
+    let path = base.join("benchhub");
+    tokio::fs::create_dir_all(&path)
+        .await
+        .with_context(|| format!("Failed to create data directory: {:?}", path))?;
+    Ok(path)
 }
 
 #[cfg(test)]

@@ -111,6 +111,11 @@ fn test_app_settings_serialization() {
         selected_gpu_mode: "Dahili GPU (iGPU)".to_string(),
         language: "tr".to_string(),
         max_test_duration_secs: 180,
+        thermal_mode: "smart".to_string(),
+        thermal_cooldown_temp: 50,
+        thermal_warmup_temp: 65,
+        thermal_timeout_secs: 30,
+        custom_runners_dir: String::new(),
     };
 
     let serialized = serde_json::to_string(&custom).expect("Failed to serialize AppSettings");

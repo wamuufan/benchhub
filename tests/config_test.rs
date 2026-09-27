@@ -18,6 +18,10 @@ fn test_config_defaults() {
     assert_eq!(settings.save_stopped_runs, DEFAULT_SAVE_STOPPED_RUNS);
     assert_eq!(settings.selected_gpu_mode, DEFAULT_SELECTED_GPU_MODE);
     assert_eq!(settings.max_test_duration_secs, 600);
+    assert_eq!(settings.thermal_mode, "off");
+    assert_eq!(settings.thermal_cooldown_temp, 50);
+    assert_eq!(settings.thermal_warmup_temp, 65);
+    assert_eq!(settings.thermal_timeout_secs, 30);
 }
 
 #[test]
@@ -29,6 +33,11 @@ fn test_config_boundary_validations_and_sanitization() {
         selected_gpu_mode: "custom_unknown".into(),
         language: "en".into(),
         max_test_duration_secs: 9999,
+        thermal_mode: "invalid_mode".into(),
+        thermal_cooldown_temp: 10, // Below 35
+        thermal_warmup_temp: 120,  // Above 95
+        thermal_timeout_secs: 500, // Above 300
+        custom_runners_dir: String::new(),
     };
 
     settings.sanitize();
@@ -37,6 +46,10 @@ fn test_config_boundary_validations_and_sanitization() {
     assert_eq!(settings.terminal_buffer_lines, 50);
     assert_eq!(settings.selected_gpu_mode, "System Default");
     assert_eq!(settings.max_test_duration_secs, 600);
+    assert_eq!(settings.thermal_mode, "off");
+    assert_eq!(settings.thermal_cooldown_temp, 35);
+    assert_eq!(settings.thermal_warmup_temp, 95);
+    assert_eq!(settings.thermal_timeout_secs, 300);
 
     let mut upper_settings = AppSettings {
         telemetry_interval_ms: 2000,
@@ -45,6 +58,11 @@ fn test_config_boundary_validations_and_sanitization() {
         selected_gpu_mode: "Dahili GPU (iGPU)".into(),
         language: "tr".into(),
         max_test_duration_secs: 180,
+        thermal_mode: "warmup".into(),
+        thermal_cooldown_temp: 45,
+        thermal_warmup_temp: 70,
+        thermal_timeout_secs: 45,
+        custom_runners_dir: String::new(),
     };
 
     upper_settings.sanitize();
@@ -53,6 +71,10 @@ fn test_config_boundary_validations_and_sanitization() {
     assert_eq!(upper_settings.terminal_buffer_lines, 1000);
     assert_eq!(upper_settings.selected_gpu_mode, "Dahili GPU (iGPU)");
     assert_eq!(upper_settings.max_test_duration_secs, 180);
+    assert_eq!(upper_settings.thermal_mode, "warmup");
+    assert_eq!(upper_settings.thermal_cooldown_temp, 45);
+    assert_eq!(upper_settings.thermal_warmup_temp, 70);
+    assert_eq!(upper_settings.thermal_timeout_secs, 45);
 }
 
 #[test]
@@ -67,6 +89,11 @@ fn test_config_persistence_with_tempfile() {
         selected_gpu_mode: "Dahili GPU (iGPU)".into(),
         language: "tr".into(),
         max_test_duration_secs: 120,
+        thermal_mode: "cooldown".into(),
+        thermal_cooldown_temp: 45,
+        thermal_warmup_temp: 60,
+        thermal_timeout_secs: 60,
+        custom_runners_dir: String::new(),
     };
 
     save_settings(&config_path, &custom).expect("Failed to save settings");

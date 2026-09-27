@@ -12,6 +12,12 @@ finish-args:
   - --share=ipc
   - --share=network
   - --device=dri
+  - --filesystem=xdg-data/benchhub:create
+  - --filesystem=xdg-cache/blender-benchmark-launcher:create
+  - --filesystem=home
+  - --filesystem=/media
+  - --filesystem=/run/media
+  - --filesystem=/mnt
   - --filesystem=xdg-run/dconf
   - --talk-name=ca.desrt.dconf
   - --env=DCONF_USER_CONFIG_DIR=.config/dconf
@@ -22,6 +28,28 @@ build-options:
     CARGO_HOME: /run/build/benchhub/cargo
 
 modules:
+  - name: fio
+    buildsystem: simple
+    build-commands:
+      - ./configure --prefix=/app --disable-gfapi --disable-numa --disable-pmem --disable-rados --disable-rbd --disable-rdma
+      - make -j$(nproc) fio
+      - install -Dm755 fio /app/bin/fio
+    sources:
+      - type: archive
+        url: https://github.com/axboe/fio/archive/refs/tags/fio-3.38.tar.gz
+        sha256: 73b3ca18a66fb88a90dae73b9994fdd18d35161d914ffe2089380760af5533cf
+
+  - name: 7zip
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 7zz /app/bin/7zz
+      - ln -sf 7zz /app/bin/7z
+    sources:
+      - type: archive
+        url: https://github.com/ip7z/7zip/releases/download/24.08/7z2408-linux-x64.tar.xz
+        sha256: 9b3a2edf0644a2b00b0a39ab6843f426128e4a6f6f98c40f8c02a668e5b5b59b
+        strip-components: 0
+
   - name: benchhub
     buildsystem: simple
     build-commands:

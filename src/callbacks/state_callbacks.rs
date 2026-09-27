@@ -8,7 +8,6 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
     let db = app_state.service.db.clone();
     let engine = app_state.service.engine.clone();
     let profiles = app_state.service.profiles.clone();
-    let data_dir = app_state.data_dir.clone();
     let config_path = app_state.config_path.clone();
     let history_filter_state = app_state.history_filter_state.clone();
     let telemetry_interval_tx = app_state.telemetry_interval_tx.clone();
@@ -230,12 +229,145 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
         }
     });
 
+    // Callback: Change Thermal Conditioning Mode
+    let settings_mode = app_state.settings.clone();
+    let config_path_mode = config_path.clone();
+    let ui_weak_mode = ui.as_weak();
+    ui.on_change_thermal_mode(move |val| {
+        let mode_str = benchhub::config::parse_thermal_mode(val.as_str());
+        let mode_idx = match mode_str {
+            "cooldown" => 1,
+            "warmup" => 2,
+            "smart" => 3,
+            _ => 0,
+        };
+        if let Ok(mut settings) = settings_mode.lock() {
+            settings.thermal_mode = mode_str.to_string();
+        }
+        if let Some(ui) = ui_weak_mode.upgrade() {
+            ui.set_selected_thermal_mode_index(mode_idx);
+            let mode_label = match mode_str {
+                "cooldown" => benchhub::i18n::t("thermal_mode_cooldown"),
+                "warmup" => benchhub::i18n::t("thermal_mode_warmup"),
+                "smart" => benchhub::i18n::t("thermal_mode_smart"),
+                _ => benchhub::i18n::t("thermal_mode_off"),
+            };
+            ui.set_status_text(
+                format!(
+                    "{}: {}",
+                    benchhub::i18n::t("thermal_mode_title"),
+                    mode_label
+                )
+                .into(),
+            );
+        }
+        if let Err(e) = benchhub::config::update_settings(&config_path_mode, |s| {
+            s.thermal_mode = mode_str.to_string();
+        }) {
+            tracing::error!("Failed to save thermal mode setting: {}", e);
+        }
+    });
+
+    // Callback: Change Thermal Cooldown Temp
+    let settings_cooldown = app_state.settings.clone();
+    let config_path_cooldown = config_path.clone();
+    let ui_weak_cooldown = ui.as_weak();
+    ui.on_change_thermal_cooldown_temp(move |val| {
+        let temp = benchhub::config::parse_cooldown_temp(val.as_str());
+        let temp_idx = match temp {
+            40 => 0,
+            45 => 1,
+            50 => 2,
+            55 => 3,
+            60 => 4,
+            _ => 2,
+        };
+        if let Ok(mut settings) = settings_cooldown.lock() {
+            settings.thermal_cooldown_temp = temp;
+        }
+        if let Some(ui) = ui_weak_cooldown.upgrade() {
+            ui.set_selected_thermal_cooldown_index(temp_idx);
+            ui.set_status_text(
+                format!(
+                    "{}: {} °C",
+                    benchhub::i18n::t("thermal_cooldown_title"),
+                    temp
+                )
+                .into(),
+            );
+        }
+        if let Err(e) = benchhub::config::update_settings(&config_path_cooldown, |s| {
+            s.thermal_cooldown_temp = temp;
+        }) {
+            tracing::error!("Failed to save thermal cooldown temp: {}", e);
+        }
+    });
+
+    // Callback: Change Thermal Warmup Temp
+    let settings_warmup = app_state.settings.clone();
+    let config_path_warmup = config_path.clone();
+    let ui_weak_warmup = ui.as_weak();
+    ui.on_change_thermal_warmup_temp(move |val| {
+        let temp = benchhub::config::parse_warmup_temp(val.as_str());
+        let temp_idx = match temp {
+            55 => 0,
+            60 => 1,
+            65 => 2,
+            70 => 3,
+            75 => 4,
+            _ => 2,
+        };
+        if let Ok(mut settings) = settings_warmup.lock() {
+            settings.thermal_warmup_temp = temp;
+        }
+        if let Some(ui) = ui_weak_warmup.upgrade() {
+            ui.set_selected_thermal_warmup_index(temp_idx);
+            ui.set_status_text(
+                format!("{}: {} °C", benchhub::i18n::t("thermal_warmup_title"), temp).into(),
+            );
+        }
+        if let Err(e) = benchhub::config::update_settings(&config_path_warmup, |s| {
+            s.thermal_warmup_temp = temp;
+        }) {
+            tracing::error!("Failed to save thermal warmup temp: {}", e);
+        }
+    });
+
+    // Callback: Change Thermal Timeout
+    let settings_timeout = app_state.settings.clone();
+    let config_path_timeout = config_path.clone();
+    let ui_weak_timeout = ui.as_weak();
+    ui.on_change_thermal_timeout(move |val| {
+        let secs = benchhub::config::parse_thermal_timeout(val.as_str());
+        let timeout_idx = match secs {
+            15 => 0,
+            30 => 1,
+            45 => 2,
+            60 => 3,
+            120 => 4,
+            _ => 1,
+        };
+        if let Ok(mut settings) = settings_timeout.lock() {
+            settings.thermal_timeout_secs = secs;
+        }
+        if let Some(ui) = ui_weak_timeout.upgrade() {
+            ui.set_selected_thermal_timeout_index(timeout_idx);
+            ui.set_status_text(
+                format!("{}: {}s", benchhub::i18n::t("thermal_timeout_title"), secs).into(),
+            );
+        }
+        if let Err(e) = benchhub::config::update_settings(&config_path_timeout, |s| {
+            s.thermal_timeout_secs = secs;
+        }) {
+            tracing::error!("Failed to save thermal timeout: {}", e);
+        }
+    });
+
     // Callback: Confirm Dialog Action
     let ui_weak_confirm = ui.as_weak();
     let engine_confirm = engine.clone();
     let profiles_confirm = profiles.clone();
     let db_confirm = db.clone();
-    let data_dir_confirm = data_dir.clone();
     let history_filter_confirm = history_filter_state.clone();
 
     ui.on_confirm_dialog(move |action_type, target_id, target_version| {
@@ -246,16 +378,12 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
         match action_type.as_str() {
             "clean_all_runners" => {
                 let ui_weak = ui_weak_confirm.clone();
-                let data_dir = data_dir_confirm.clone();
+                let engine = engine_confirm.clone();
                 tokio::spawn(async move {
-                    let runners_dir = data_dir.join("runners");
+                    let runners_dir = engine.get_runners_dir();
                     if runners_dir.exists() {
-                        if let Ok(safe_runners_dir) =
-                            benchhub::utils::ensure_path_within(&data_dir, &runners_dir)
-                        {
-                            let _ = tokio::fs::remove_dir_all(&safe_runners_dir).await;
-                            let _ = tokio::fs::create_dir_all(&safe_runners_dir).await;
-                        }
+                        let _ = tokio::fs::remove_dir_all(&runners_dir).await;
+                        let _ = tokio::fs::create_dir_all(&runners_dir).await;
                     }
                     let _ = slint::invoke_from_event_loop(move || {
                         if let Some(ui) = ui_weak.upgrade() {
@@ -263,9 +391,26 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
                             for i in 0..catalog.row_count() {
                                 if let Some(mut item) = catalog.row_data(i) {
                                     item.installed = false;
+                                    item.installed_versions_count = 0;
+                                    if item.total_versions_count > 1 {
+                                        item.installed_versions_text =
+                                            benchhub::i18n::t("versions_installed_count")
+                                                .replacen("{}", "0", 1)
+                                                .replacen(
+                                                    "{}",
+                                                    &item.total_versions_count.to_string(),
+                                                    1,
+                                                )
+                                                .into();
+                                    }
                                     catalog.set_row_data(i, item);
                                 }
                             }
+                            let total_count = catalog.row_count();
+                            let summary = benchhub::i18n::t("catalog_installed_summary")
+                                .replacen("{}", "0", 1)
+                                .replacen("{}", &total_count.to_string(), 1);
+                            ui.set_catalog_installed_summary_text(summary.into());
                             ui.set_runners_size_text("0 B".into());
                             ui.set_status_text(
                                 benchhub::i18n::t("status_all_runners_cleaned").into(),
@@ -297,13 +442,49 @@ pub fn register_state_callbacks(ui: &AppWindow, app_state: &AppState) {
                                 if let Some(mut item) = catalog.row_data(i) {
                                     if item.id == bench_id.as_str() {
                                         item.running = false;
-                                        if is_success && item.selected_version == ver_str.as_str() {
-                                            item.installed = false;
+                                        if is_success {
+                                            if item.selected_version == ver_str.as_str() {
+                                                item.installed = false;
+                                            }
+                                            if item.total_versions_count > 1
+                                                && item.installed_versions_count > 0
+                                            {
+                                                item.installed_versions_count -= 1;
+                                                item.installed_versions_text =
+                                                    benchhub::i18n::t("versions_installed_count")
+                                                        .replacen(
+                                                            "{}",
+                                                            &item
+                                                                .installed_versions_count
+                                                                .to_string(),
+                                                            1,
+                                                        )
+                                                        .replacen(
+                                                            "{}",
+                                                            &item.total_versions_count.to_string(),
+                                                            1,
+                                                        )
+                                                        .into();
+                                            }
                                         }
                                         catalog.set_row_data(i, item);
                                     }
                                 }
                             }
+
+                            let mut installed_count = 0;
+                            for i in 0..catalog.row_count() {
+                                if let Some(item) = catalog.row_data(i) {
+                                    if item.installed || item.installed_versions_count > 0 {
+                                        installed_count += 1;
+                                    }
+                                }
+                            }
+                            let total_count = catalog.row_count();
+                            let summary = benchhub::i18n::t("catalog_installed_summary")
+                                .replacen("{}", &installed_count.to_string(), 1)
+                                .replacen("{}", &total_count.to_string(), 1);
+                            ui.set_catalog_installed_summary_text(summary.into());
 
                             if is_success {
                                 let (localized_name, _, _) = get_localized_profile_info(

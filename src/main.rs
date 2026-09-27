@@ -48,7 +48,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Initialize database, engine, and service layer
     let db = Db::new(data_dir.join("benchhub.sqlite"))?;
-    let engine = BenchmarkEngine::new(data_dir.clone());
+    let custom_runners = if !settings.custom_runners_dir.is_empty() {
+        Some(std::path::PathBuf::from(&settings.custom_runners_dir))
+    } else {
+        None
+    };
+    let engine = BenchmarkEngine::new(data_dir.clone()).with_runners_dir(custom_runners);
     let profiles = match load_profiles().await {
         Ok(profs) => {
             tracing::info!("{} benchmark profili başarıyla yüklendi", profs.len());

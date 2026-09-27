@@ -17,14 +17,32 @@ pub struct BenchmarkRunOutput {
 #[derive(Clone)]
 pub struct BenchmarkEngine {
     base_dir: PathBuf,
+    runners_dir: Option<PathBuf>,
 }
 
 impl BenchmarkEngine {
     pub fn new(base_dir: PathBuf) -> Self {
-        Self { base_dir }
+        Self {
+            base_dir,
+            runners_dir: None,
+        }
+    }
+
+    pub fn with_runners_dir(mut self, runners_dir: Option<PathBuf>) -> Self {
+        self.runners_dir = runners_dir;
+        self
+    }
+
+    pub fn set_runners_dir(&mut self, runners_dir: Option<PathBuf>) {
+        self.runners_dir = runners_dir;
     }
 
     pub fn get_runners_dir(&self) -> PathBuf {
+        if let Some(ref custom) = self.runners_dir {
+            if !custom.as_os_str().is_empty() {
+                return custom.clone();
+            }
+        }
         self.base_dir.join("runners")
     }
 
@@ -562,6 +580,11 @@ impl BenchmarkEngine {
             }
 
             let _ = ensure_executable_permissions(&runner_dir).await;
+            if effective_profile.id.contains("blender")
+                || effective_profile.name.to_lowercase().contains("blender")
+            {
+                let _ = ensure_blender_runner(&runner_dir).await;
+            }
             let _ = tokio::fs::write(runner_dir.join(".successfully-installed"), "").await;
             on_output(format!(
                 "[BenchHub] {}: {}\n",
@@ -691,6 +714,24 @@ impl BenchmarkEngine {
             None
         };
 
+        let is_blender =
+            profile.id.contains("blender") || profile.name.to_lowercase().contains("blender");
+        if is_blender {
+            let _ = ensure_blender_runner(&runner_dir).await;
+        }
+        let is_cray = profile.id.contains("cray");
+        if is_cray {
+            let _ = ensure_cray_runner(&runner_dir).await;
+        }
+        let is_fio = profile.id.contains("fio");
+        if is_fio {
+            let _ = ensure_fio_runner(&runner_dir).await;
+        }
+        let is_stream = profile.id.contains("stream");
+        if is_stream {
+            let _ = ensure_stream_runner(&runner_dir).await;
+        }
+
         // Resolve executable using priority path and dynamic recursive fallback search
         let resolved = match Self::resolve_executable(&runner_dir, &effective_profile) {
             Ok(res) => res,
@@ -708,6 +749,18 @@ impl BenchmarkEngine {
         let _ = ensure_executable_permissions(&resolved.work_dir).await;
         let _ = ensure_gthread_shim(&resolved.work_dir).await;
         let _ = ensure_gthread_shim(&runner_dir).await;
+        if is_blender {
+            let _ = ensure_blender_runner(&resolved.work_dir).await;
+        }
+        if is_cray {
+            let _ = ensure_cray_runner(&resolved.work_dir).await;
+        }
+        if is_fio {
+            let _ = ensure_fio_runner(&resolved.work_dir).await;
+        }
+        if is_stream {
+            let _ = ensure_stream_runner(&resolved.work_dir).await;
+        }
 
         let is_en = crate::i18n::get_language() == "en";
         let header = if is_en {
@@ -1080,6 +1133,9 @@ impl BenchmarkEngine {
             }
             if candidate.is_file() {
                 if let Ok(safe_candidate) = ensure_path_within(runner_dir, &candidate) {
+                    if is_dynamically_broken(&safe_candidate) {
+                        continue;
+                    }
                     let work_dir = safe_candidate.parent().unwrap_or(runner_dir).to_path_buf();
                     let file_name = safe_candidate
                         .file_name()
@@ -1094,19 +1150,27 @@ impl BenchmarkEngine {
             }
         }
 
-        // 2. Check if run_cmd is a system command in PATH (e.g. "sleep", "sh")
+        // 2. Check if run_cmd is a system command in PATH (e.g. "sleep", "sh", "fio", "7zz")
         if !profile.run_cmd.is_empty() {
             let clean = profile.run_cmd.trim_start_matches("./");
             if !clean.contains('/') && !is_archive_or_installer(clean) {
+                let mut path_candidates = vec![clean.to_string()];
+                if (profile.id.contains("7zip") || profile.name.to_lowercase().contains("7-zip"))
+                    && clean == "7zz"
+                {
+                    path_candidates.push("7z".to_string());
+                }
                 if let Ok(path_var) = std::env::var("PATH") {
                     for path_entry in std::env::split_paths(&path_var) {
-                        let sys_bin = path_entry.join(clean);
-                        if sys_bin.is_file() {
-                            return Ok(ResolvedExecutable {
-                                work_dir: runner_dir.to_path_buf(),
-                                executable: clean.to_string(),
-                                full_path: sys_bin,
-                            });
+                        for bin_name in &path_candidates {
+                            let sys_bin = path_entry.join(bin_name);
+                            if sys_bin.is_file() && !is_dynamically_broken(&sys_bin) {
+                                return Ok(ResolvedExecutable {
+                                    work_dir: runner_dir.to_path_buf(),
+                                    executable: bin_name.clone(),
+                                    full_path: sys_bin,
+                                });
+                            }
                         }
                     }
                 }
@@ -1196,7 +1260,7 @@ impl BenchmarkEngine {
                                 best_score -= 15;
                             }
 
-                            if best_score > 0 {
+                            if best_score > 0 && !is_dynamically_broken(&path) {
                                 candidates.push((best_score, depth, path));
                             }
                         }
@@ -1286,6 +1350,117 @@ pub fn is_elf_or_script(path: &Path) -> bool {
             return true;
         }
     }
+    false
+}
+
+pub fn is_dynamically_linked_elf(path: &Path) -> bool {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut file = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(_) => return false,
+    };
+
+    let mut header = [0u8; 64];
+    if file.read_exact(&mut header).is_err() || &header[0..4] != b"\x7fELF" {
+        return false;
+    }
+
+    let is_64 = header[4] == 2;
+    let is_little_endian = header[5] == 1;
+    if !is_little_endian {
+        return false;
+    }
+
+    if is_64 {
+        let phoff = u64::from_le_bytes(header[32..40].try_into().unwrap_or_default());
+        let phentsize = u16::from_le_bytes(header[54..56].try_into().unwrap_or_default()) as u64;
+        let phnum = u16::from_le_bytes(header[56..58].try_into().unwrap_or_default()) as usize;
+
+        if phoff == 0 || phentsize < 4 || phnum == 0 || phnum > 256 {
+            return false;
+        }
+
+        if file.seek(SeekFrom::Start(phoff)).is_err() {
+            return false;
+        }
+
+        for _ in 0..phnum {
+            let mut entry = vec![0u8; phentsize as usize];
+            if file.read_exact(&mut entry).is_err() {
+                return false;
+            }
+            let p_type = u32::from_le_bytes(entry[0..4].try_into().unwrap_or_default());
+            if p_type == 3 {
+                // PT_INTERP (0x3) found
+                return true;
+            }
+        }
+    } else {
+        let phoff = u32::from_le_bytes(header[28..32].try_into().unwrap_or_default()) as u64;
+        let phentsize = u16::from_le_bytes(header[42..44].try_into().unwrap_or_default()) as u64;
+        let phnum = u16::from_le_bytes(header[44..46].try_into().unwrap_or_default()) as usize;
+
+        if phoff == 0 || phentsize < 4 || phnum == 0 || phnum > 256 {
+            return false;
+        }
+
+        if file.seek(SeekFrom::Start(phoff)).is_err() {
+            return false;
+        }
+
+        for _ in 0..phnum {
+            let mut entry = vec![0u8; phentsize as usize];
+            if file.read_exact(&mut entry).is_err() {
+                return false;
+            }
+            let p_type = u32::from_le_bytes(entry[0..4].try_into().unwrap_or_default());
+            if p_type == 3 {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+pub fn is_dynamically_broken(path: &Path) -> bool {
+    if !is_dynamically_linked_elf(path) {
+        return false;
+    }
+
+    let mut cmd = std::process::Command::new(path);
+    cmd.env("LD_TRACE_LOADED_OBJECTS", "1");
+    if let Some(parent) = path.parent() {
+        let parent_str = parent.display().to_string();
+        let extra = format!("{parent_str}:{parent_str}/lib:{parent_str}/lib64:{parent_str}/bin");
+        if let Ok(existing) = std::env::var("LD_LIBRARY_PATH") {
+            cmd.env("LD_LIBRARY_PATH", format!("{extra}:{existing}"));
+        } else {
+            cmd.env("LD_LIBRARY_PATH", extra);
+        }
+    }
+
+    let output = match cmd.output() {
+        Ok(out) => out,
+        Err(_) => return true,
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if stdout.contains("not found") || stderr.contains("not found") {
+        return true;
+    }
+
+    if !output.status.success()
+        && (stderr.contains("error while loading shared libraries")
+            || stderr.contains("cannot open shared object file")
+            || stderr.contains("GLIBC_")
+            || stderr.contains("version `"))
+    {
+        return true;
+    }
+
     false
 }
 
@@ -1511,6 +1686,190 @@ pub async fn ensure_gthread_shim(work_dir: &Path) -> Result<()> {
         {
             #[cfg(unix)]
             let _ = tokio::fs::symlink(glib_path, &target_link_root).await;
+        }
+    }
+    Ok(())
+}
+
+pub async fn ensure_blender_runner(runner_dir: &Path) -> Result<()> {
+    if !tokio::fs::try_exists(runner_dir).await.unwrap_or(false) {
+        return Ok(());
+    }
+
+    let cli_path = runner_dir.join("benchmark-launcher-cli");
+    let orig_path = runner_dir.join("benchmark-launcher-cli-orig");
+
+    // Check if cli_path exists and is an ELF binary
+    if tokio::fs::try_exists(&cli_path).await.unwrap_or(false) {
+        if let Ok(data) = tokio::fs::read(&cli_path).await {
+            if data.starts_with(b"\x7fELF") {
+                let _ = tokio::fs::rename(&cli_path, &orig_path).await;
+            }
+        }
+    }
+
+    // Write the offline runner script to benchmark-launcher-cli and blender-runner
+    let runner_script = include_str!("../resources/scripts/blender_runner.py");
+    let _ = tokio::fs::write(&cli_path, runner_script).await;
+    let _ = tokio::fs::write(runner_dir.join("blender-runner"), runner_script).await;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o755);
+        let _ = tokio::fs::set_permissions(&cli_path, perms.clone()).await;
+        let _ = tokio::fs::set_permissions(runner_dir.join("blender-runner"), perms).await;
+    }
+
+    // Link cache directories into runner_dir if available
+    let mut cache_candidates = Vec::new();
+    if let Ok(real_home) = std::env::var("SNAP_REAL_HOME") {
+        cache_candidates.push(
+            PathBuf::from(real_home)
+                .join(".cache")
+                .join("blender-benchmark-launcher"),
+        );
+    }
+    if let Some(cache_dir) = dirs::cache_dir() {
+        cache_candidates.push(cache_dir.join("blender-benchmark-launcher"));
+    }
+    if let Ok(user) = std::env::var("USER") {
+        cache_candidates.push(PathBuf::from(format!(
+            "/home/{}/.cache/blender-benchmark-launcher",
+            user
+        )));
+    }
+    for base in cache_candidates {
+        for sub in &["blender-versions", "scenes", "benchmark-scripts"] {
+            let src = base.join(sub);
+            let dst = runner_dir.join(sub);
+            if src.exists() && !dst.exists() {
+                #[cfg(unix)]
+                let _ = tokio::fs::symlink(&src, &dst).await;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn ensure_cray_runner(runner_dir: &Path) -> Result<()> {
+    if !tokio::fs::try_exists(runner_dir).await.unwrap_or(false) {
+        return Ok(());
+    }
+
+    let source_file = runner_dir.join("c-ray-mt.c");
+    let bin_path = runner_dir.join("c-ray");
+    if !tokio::fs::try_exists(&source_file).await.unwrap_or(false) {
+        return Ok(());
+    }
+
+    let needs_rebuild = if tokio::fs::try_exists(&bin_path).await.unwrap_or(false) {
+        let check = tokio::process::Command::new(&bin_path)
+            .arg("-h")
+            .output()
+            .await;
+        match check {
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                stderr.contains("GLIBC_") || stderr.contains("version `")
+            }
+            Err(_) => true,
+        }
+    } else {
+        true
+    };
+
+    if needs_rebuild {
+        let _ = tokio::process::Command::new("gcc")
+            .current_dir(runner_dir)
+            .args(["-O3", "-pthread", "c-ray-mt.c", "-lm", "-o", "c-ray"])
+            .status()
+            .await;
+    }
+    Ok(())
+}
+
+pub async fn ensure_stream_runner(runner_dir: &Path) -> Result<()> {
+    if !tokio::fs::try_exists(runner_dir).await.unwrap_or(false) {
+        return Ok(());
+    }
+
+    let source_file = runner_dir.join("stream.c");
+    let bin_path = runner_dir.join("stream");
+    if !tokio::fs::try_exists(&source_file).await.unwrap_or(false) {
+        return Ok(());
+    }
+
+    let needs_rebuild = if tokio::fs::try_exists(&bin_path).await.unwrap_or(false) {
+        is_dynamically_broken(&bin_path)
+    } else {
+        true
+    };
+
+    if needs_rebuild {
+        tracing::info!("Rebuilding stream runner in {:?}", runner_dir);
+        let _ = tokio::process::Command::new("gcc")
+            .current_dir(runner_dir)
+            .args([
+                "-O3",
+                "-fopenmp",
+                "-DSTREAM_ARRAY_SIZE=80000000",
+                "-DNTIMES=10",
+                "stream.c",
+                "-o",
+                "stream",
+            ])
+            .status()
+            .await;
+    }
+    Ok(())
+}
+
+pub async fn ensure_fio_runner(runner_dir: &Path) -> Result<()> {
+    if !tokio::fs::try_exists(runner_dir).await.unwrap_or(false) {
+        return Ok(());
+    }
+
+    let bin_path = runner_dir.join("fio");
+    let is_broken = if tokio::fs::try_exists(&bin_path).await.unwrap_or(false) {
+        is_dynamically_broken(&bin_path)
+    } else {
+        true
+    };
+
+    if is_broken {
+        // First check if a working system fio exists in PATH (e.g. staged in Snap or bundled in Flatpak).
+        // If system fio exists and works, we DO NOT overwrite bin_path with a container binary,
+        // because resolve_executable will seamlessly use the working system binary from PATH.
+        let mut has_working_system = false;
+        if let Ok(path_var) = std::env::var("PATH") {
+            for dir in path_var.split(':') {
+                let candidate = Path::new(dir).join("fio");
+                if candidate.is_file()
+                    && candidate != bin_path
+                    && !is_dynamically_broken(&candidate)
+                {
+                    has_working_system = true;
+                    break;
+                }
+            }
+        }
+
+        // If no working system fio exists in PATH (e.g. on host Native when bin_path was corrupted),
+        // recompile clean fio locally with minimal dependencies so it only links libc, libm, libz.
+        if !has_working_system {
+            tracing::info!(
+                "Rebuilding fio runner with minimal dependencies in {:?}",
+                runner_dir
+            );
+            let rebuild_cmd = "(wget -nv -c https://github.com/axboe/fio/archive/refs/tags/fio-3.38.tar.gz -O fio-3.38.tar.gz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls -xzf fio-3.38.tar.gz && cd fio-fio-3.38 && ./configure --disable-gfapi --disable-numa --disable-pmem --disable-rados --disable-rbd --disable-rdma > /dev/null && make -j$(nproc) fio > /dev/null && cp fio ../fio && cd .. && rm -rf fio-fio-3.38 fio-3.38.tar.gz && chmod +x fio)";
+            let _ = tokio::process::Command::new("sh")
+                .arg("-c")
+                .arg(rebuild_cmd)
+                .current_dir(runner_dir)
+                .status()
+                .await;
         }
     }
     Ok(())

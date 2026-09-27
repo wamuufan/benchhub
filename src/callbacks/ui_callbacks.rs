@@ -52,6 +52,12 @@ pub fn register_ui_callbacks(ui: &AppWindow, app_state: &AppState) {
         let _ = Command::new("xdg-open").arg(&data_dir_open).spawn();
     });
 
+    // Callback: Open Benchmark Library / Runners Directory
+    let runners_dir_open = engine.get_runners_dir();
+    ui.on_open_runners_dir(move || {
+        let _ = Command::new("xdg-open").arg(&runners_dir_open).spawn();
+    });
+
     // Callback: Cancel Dialog
     let ui_weak_cancel = ui.as_weak();
     ui.on_cancel_dialog(move || {

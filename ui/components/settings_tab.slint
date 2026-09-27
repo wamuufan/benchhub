@@ -34,6 +34,22 @@ export component SettingsTab inherits ScrollView {
     callback request_clean_all_runners();
     callback request_clear_history();
     in-out property <string> runners_size_text;
+    in-out property <string> runners_dir_path;
+    callback open_runners_dir();
+
+    // Thermal Conditioning (Warmup & Cooldown)
+    in-out property <[string]> thermal_modes;
+    in-out property <int> selected_thermal_mode_index;
+    callback change_thermal_mode(string);
+    in-out property <[string]> thermal_cooldown_temps;
+    in-out property <int> selected_thermal_cooldown_index;
+    callback change_thermal_cooldown_temp(string);
+    in-out property <[string]> thermal_warmup_temps;
+    in-out property <int> selected_thermal_warmup_index;
+    callback change_thermal_warmup_temp(string);
+    in-out property <[string]> thermal_timeouts;
+    in-out property <int> selected_thermal_timeout_index;
+    callback change_thermal_timeout(string);
 
     ScrollView {
                     visible: root.active_tab == 3;
@@ -256,6 +272,49 @@ export component SettingsTab inherits ScrollView {
     
                                         // Divider
                                         Rectangle { height: 1px; background: Theme.border; }
+
+                                        // Satır: Benchmark Kütüphane Dizini
+                                        SettingRow {
+                                            title: Lang.t("runners_dir_title", Lang.current);
+                                            description: Lang.t("runners_dir_desc", Lang.current);
+
+                                            HorizontalLayout {
+                                                spacing: Theme.space-sm;
+
+                                                Rectangle {
+                                                    horizontal-stretch: 1;
+                                                    background: Theme.bg-dark;
+                                                    border-radius: Theme.radius-sm;
+                                                    border-width: 1px;
+                                                    border-color: Theme.border;
+                                                    height: 32px;
+
+                                                    HorizontalLayout {
+                                                        padding-left: Theme.space-sm;
+                                                        padding-right: Theme.space-sm;
+                                                        alignment: center;
+                                                        Text {
+                                                            text: root.runners_dir_path;
+                                                            font-size: 11px;
+                                                            color: Theme.text-muted;
+                                                            overflow: elide;
+                                                            vertical-alignment: center;
+                                                        }
+                                                    }
+                                                }
+
+                                                AppButton {
+                                                    text: Lang.t("open_dir_btn", Lang.current);
+                                                    variant: "secondary";
+                                                    button_height: 32px;
+                                                    padding_x: 10px;
+                                                    clicked => { root.open_runners_dir(); }
+                                                }
+                                            }
+                                        }
+
+                                        // Divider
+                                        Rectangle { height: 1px; background: Theme.border; }
     
                                         // Satır 3: İndirilmiş Benchmark Paketleri
                                         SettingRow {
@@ -390,7 +449,95 @@ export component SettingsTab inherits ScrollView {
                                     }
                                 }
                             }
-    
+
+                            // ------------------------------------------
+                            // BÖLÜM: TERMAL ŞARTLANDIRMA (WARMUP & COOLDOWN)
+                            // ------------------------------------------
+                            VerticalLayout {
+                                spacing: Theme.space-sm;
+
+                                Text {
+                                    text: Lang.t("sec_thermal", Lang.current);
+                                    font-size: 14px;
+                                    font-weight: 700;
+                                    color: Theme.text-main;
+                                    horizontal-alignment: left;
+                                }
+
+                                SurfaceCard {
+                                    width: 100%;
+                                    VerticalLayout {
+                                        padding: Theme.space-md;
+                                        spacing: Theme.space-md;
+
+                                        // Satır 1: Şartlandırma Modu
+                                        SettingRow {
+                                            title: Lang.t("thermal_mode_title", Lang.current);
+                                            description: Lang.t("thermal_mode_desc", Lang.current);
+
+                                            ComboBox {
+                                                width: 280px;
+                                                height: 32px;
+                                                model: root.thermal_modes;
+                                                current-index <=> root.selected_thermal_mode_index;
+                                                selected(val) => { root.change_thermal_mode(val); }
+                                            }
+                                        }
+
+                                        // Divider
+                                        Rectangle { height: 1px; background: Theme.border; }
+
+                                        // Satır 2: Hedef Soğuma Sıcaklığı
+                                        SettingRow {
+                                            title: Lang.t("thermal_cooldown_title", Lang.current);
+                                            description: Lang.t("thermal_cooldown_desc", Lang.current);
+
+                                            ComboBox {
+                                                width: 280px;
+                                                height: 32px;
+                                                model: root.thermal_cooldown_temps;
+                                                current-index <=> root.selected_thermal_cooldown_index;
+                                                selected(val) => { root.change_thermal_cooldown_temp(val); }
+                                            }
+                                        }
+
+                                        // Divider
+                                        Rectangle { height: 1px; background: Theme.border; }
+
+                                        // Satır 3: Hedef Isıtma Sıcaklığı
+                                        SettingRow {
+                                            title: Lang.t("thermal_warmup_title", Lang.current);
+                                            description: Lang.t("thermal_warmup_desc", Lang.current);
+
+                                            ComboBox {
+                                                width: 280px;
+                                                height: 32px;
+                                                model: root.thermal_warmup_temps;
+                                                current-index <=> root.selected_thermal_warmup_index;
+                                                selected(val) => { root.change_thermal_warmup_temp(val); }
+                                            }
+                                        }
+
+                                        // Divider
+                                        Rectangle { height: 1px; background: Theme.border; }
+
+                                        // Satır 4: Maksimum Süre
+                                        SettingRow {
+                                            title: Lang.t("thermal_timeout_title", Lang.current);
+                                            description: Lang.t("thermal_timeout_desc", Lang.current);
+
+                                            ComboBox {
+                                                width: 280px;
+                                                height: 32px;
+                                                model: root.thermal_timeouts;
+                                                current-index <=> root.selected_thermal_timeout_index;
+                                                selected(val) => { root.change_thermal_timeout(val); }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             // ------------------------------------------
                             // BÖLÜM 4: DONANIM VE BAKIM
                             // ------------------------------------------

@@ -3,29 +3,11 @@ use benchhub::models::TelemetryData;
 use std::path::PathBuf;
 use tokio::sync::{mpsc, watch};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use tokio::fs;
 
-pub fn get_data_dir() -> Result<std::path::PathBuf> {
-    let base = dirs::data_dir()
-        .ok_or_else(|| anyhow::anyhow!("Failed to determine user data directory"))?;
-    let path = base.join("benchhub");
-    std::fs::create_dir_all(&path)
-        .with_context(|| format!("Failed to create data directory: {:?}", path))?;
-    Ok(path)
-}
-
-pub async fn ensure_data_dir() -> Result<std::path::PathBuf> {
-    let base = dirs::data_dir()
-        .ok_or_else(|| anyhow::anyhow!("Failed to determine user data directory"))?;
-    let path = base.join("benchhub");
-    fs::create_dir_all(&path)
-        .await
-        .with_context(|| format!("Failed to create data directory: {:?}", path))?;
-    Ok(path)
-}
-
 pub use benchhub::config::{load_settings, save_settings, update_settings};
+pub use benchhub::utils::{ensure_data_dir, get_data_dir, resolve_shared_data_dir};
 
 pub async fn calculate_dir_size(path: &std::path::Path) -> u64 {
     calculate_dir_size_result(path).await.unwrap_or(0)

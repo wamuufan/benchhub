@@ -26,4 +26,5 @@ pub mod logging;
 pub mod models;
 pub mod service;
 pub mod telemetry;
+pub mod thermal;
 pub mod utils;

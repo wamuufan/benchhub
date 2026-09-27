@@ -15,12 +15,58 @@ export component CatalogTab inherits VerticalLayout {
     in-out property <bool> is_benchmark_running;
     callback run_benchmark(string, string);
     in-out property <[BenchmarkItem]> catalog;
+    in-out property <string> catalog_installed_summary_text: "";
     callback open_benchmark_settings(string, string);
 
     VerticalLayout {
                     visible: root.active_tab == 0;
                     spacing: Theme.space-md;
-    
+
+                    HorizontalLayout {
+                        padding-left: Theme.space-xs;
+                        padding-right: Theme.space-xs;
+                        alignment: space-between;
+
+                        Text {
+                            text: Lang.t("tab_catalog", Lang.current);
+                            font-size: 14px;
+                            font-weight: 700;
+                            color: Theme.text-main;
+                            vertical-alignment: center;
+                        }
+
+                        if root.catalog_installed_summary_text != "": Rectangle {
+                            background: Theme.bg-dark;
+                            border-radius: Theme.radius-sm;
+                            border-width: 1px;
+                            border-color: Theme.border;
+                            height: 26px;
+
+                            HorizontalLayout {
+                                padding-left: 10px;
+                                padding-right: 10px;
+                                spacing: 6px;
+                                alignment: center;
+
+                                Rectangle {
+                                    width: 6px;
+                                    height: 6px;
+                                    border-radius: 3px;
+                                    background: Theme.success;
+                                    y: 10px;
+                                }
+
+                                Text {
+                                    text: root.catalog_installed_summary_text;
+                                    font-size: 11px;
+                                    font-weight: 600;
+                                    color: Theme.text-muted;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+
                     ListView {
                         for item in root.catalog: VerticalLayout {
                             padding-bottom: 8px;
@@ -72,7 +118,8 @@ export component CatalogTab inherits VerticalLayout {
                                         }
     
                                         Text {
-                                            text: item.description + "  •  " + Lang.t("download_size", Lang.current) + ": " + item.download_size;
+                                            text: item.description + "  •  " + Lang.t("download_size", Lang.current) + ": " + item.download_size
+                                                + (item.total_versions_count > 1 ? ("  •  📦 " + item.installed_versions_text) : "");
                                             font-size: 12px;
                                             color: Theme.text-muted;
                                             overflow: elide;
@@ -170,8 +217,8 @@ export component CatalogTab inherits VerticalLayout {
                                                 StatusBadge {
                                                     width: 100%;
                                                     badge_height: 32px;
-                                                    text: item.running ? Lang.t("running", Lang.current) : (item.installed ? Lang.t("installed", Lang.current) : Lang.t("not_installed", Lang.current));
-                                                    status: item.running ? "danger" : (item.installed ? "success" : "warning");
+                                                    text: item.is_downloading ? Lang.t("downloading", Lang.current) : (item.running ? Lang.t("running", Lang.current) : (item.installed ? Lang.t("installed", Lang.current) : Lang.t("not_installed", Lang.current)));
+                                                    status: item.is_downloading ? "warning" : (item.running ? "danger" : (item.installed ? "success" : "muted"));
                                                 }
                                             }
     
@@ -182,10 +229,10 @@ export component CatalogTab inherits VerticalLayout {
     
                                                 if !item.installed: AppButton {
                                                     width: 100%;
-                                                    text: item.running ? Lang.t("loading", Lang.current) : Lang.t("install", Lang.current);
+                                                    text: item.is_downloading ? Lang.t("downloading", Lang.current) : (item.running ? Lang.t("loading", Lang.current) : Lang.t("install", Lang.current));
                                                     variant: "primary";
                                                     button_height: 32px;
-                                                    enabled: !root.is_benchmark_running && !item.running;
+                                                    enabled: !root.is_benchmark_running && !item.running && !item.is_downloading;
                                                     clicked => { root.request_install(item.id, item.selected_version); }
                                                 }
     

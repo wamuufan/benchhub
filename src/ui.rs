@@ -633,6 +633,53 @@ pub fn update_localized_models(ui: &AppWindow, lang: &str) {
         "1024MB (1 GB)".into(),
     ];
     ui.set_bench_config_7zip_dict_sizes(ModelRc::from(Rc::new(VecModel::from(zip_dict_sizes))));
+
+    let thermal_modes: Vec<slint::SharedString> = vec![
+        i18n::t("thermal_mode_off").into(),
+        i18n::t("thermal_mode_cooldown").into(),
+        i18n::t("thermal_mode_warmup").into(),
+        i18n::t("thermal_mode_smart").into(),
+    ];
+    ui.set_thermal_modes(ModelRc::from(Rc::new(VecModel::from(thermal_modes))));
+
+    let default_tag = i18n::t("default");
+    let thermal_cooldowns: Vec<slint::SharedString> = vec![
+        "40 °C".into(),
+        "45 °C".into(),
+        format!("50 °C ({})", default_tag).into(),
+        "55 °C".into(),
+        "60 °C".into(),
+    ];
+    ui.set_thermal_cooldown_temps(ModelRc::from(Rc::new(VecModel::from(thermal_cooldowns))));
+
+    let thermal_warmups: Vec<slint::SharedString> = vec![
+        "55 °C".into(),
+        "60 °C".into(),
+        format!("65 °C ({})", default_tag).into(),
+        "70 °C".into(),
+        "75 °C".into(),
+    ];
+    ui.set_thermal_warmup_temps(ModelRc::from(Rc::new(VecModel::from(thermal_warmups))));
+
+    let is_en = lang == "en";
+    let thermal_timeouts: Vec<slint::SharedString> = if is_en {
+        vec![
+            "15s".into(),
+            format!("30s ({})", default_tag).into(),
+            "45s".into(),
+            "60s (1 min)".into(),
+            "120s (2 min)".into(),
+        ]
+    } else {
+        vec![
+            "15 sn".into(),
+            format!("30 sn ({})", default_tag).into(),
+            "45 sn".into(),
+            "60 sn (1 dk)".into(),
+            "120 sn (2 dk)".into(),
+        ]
+    };
+    ui.set_thermal_timeouts(ModelRc::from(Rc::new(VecModel::from(thermal_timeouts))));
 }
 
 pub type Settings = benchhub::config::AppSettings;
@@ -700,6 +747,44 @@ pub fn update_ui_language(ui: &AppWindow, settings: &Settings) {
     };
     ui.set_selected_gpu_mode(gpu_mode_display.into());
     ui.set_selected_gpu_mode_index(gpu_mode_idx);
+
+    let mode_idx = match settings.thermal_mode.as_str() {
+        "cooldown" => 1,
+        "warmup" => 2,
+        "smart" => 3,
+        _ => 0,
+    };
+    ui.set_selected_thermal_mode_index(mode_idx);
+
+    let cooldown_idx = match settings.thermal_cooldown_temp {
+        40 => 0,
+        45 => 1,
+        50 => 2,
+        55 => 3,
+        60 => 4,
+        _ => 2,
+    };
+    ui.set_selected_thermal_cooldown_index(cooldown_idx);
+
+    let warmup_idx = match settings.thermal_warmup_temp {
+        55 => 0,
+        60 => 1,
+        65 => 2,
+        70 => 3,
+        75 => 4,
+        _ => 2,
+    };
+    ui.set_selected_thermal_warmup_index(warmup_idx);
+
+    let timeout_idx = match settings.thermal_timeout_secs {
+        15 => 0,
+        30 => 1,
+        45 => 2,
+        60 => 3,
+        120 => 4,
+        _ => 1,
+    };
+    ui.set_selected_thermal_timeout_index(timeout_idx);
 }
 
 /// Initializes and populates the main Slint UI window with stored settings, system info,
@@ -722,11 +807,20 @@ pub fn setup_initial_ui(
     // Populate Settings UI
     ui.set_data_dir_path(app_state.data_dir.to_string_lossy().to_string().into());
     ui.set_logs_dir_path(app_state.logs_dir.to_string_lossy().to_string().into());
+    ui.set_runners_dir_path(
+        app_state
+            .service
+            .engine
+            .get_runners_dir()
+            .to_string_lossy()
+            .to_string()
+            .into(),
+    );
     ui.set_runners_size_text(i18n::t("calculating").into());
     ui.set_sensor_diagnosis_text(i18n::t("scanning_sensors").into());
 
     let ui_weak_init_diag = ui.as_weak();
-    let runners_dir_init = app_state.data_dir.join("runners");
+    let runners_dir_init = app_state.service.engine.get_runners_dir();
     tokio::spawn(async move {
         let runners_size = crate::commands::calculate_dir_size(&runners_dir_init).await;
         let diag = benchhub::telemetry::get_sensor_diagnosis();
@@ -868,38 +962,55 @@ pub fn populate_initial_catalog(ui: &AppWindow, app_state: &crate::state::AppSta
                 .position(|v| v.version == selected_ver)
                 .unwrap_or(0) as i32;
 
-            let has_versions = p.versions.len() > 1
-                && (p.id == "7zip"
-                    || p.id == "unigine"
-                    || p.id == "geekbench"
-                    || p.id == "blender"
-                    || p.id == "ffmpeg");
+            let has_versions = p.versions.len() > 1;
 
-            let display_ver = match p.id.as_str() {
-                "cray" => "v1.1".to_string(),
-                "ycruncher" => "v0.8.7".to_string(),
-                "stream" => "v5.10".to_string(),
-                "fio" => "v3.38".to_string(),
-                "gravitymark" => "v1.89".to_string(),
-                "llama-bench" => "b10729".to_string(),
-                _ => {
-                    if has_versions {
-                        selected_ver.clone()
-                    } else if selected_ver.is_empty() {
-                        "v1.0".to_string()
-                    } else if selected_ver.starts_with('v') || selected_ver.starts_with('b') {
-                        selected_ver.clone()
-                    } else if selected_ver
-                        .chars()
-                        .next()
-                        .map(|c| c.is_ascii_digit())
-                        .unwrap_or(false)
-                    {
-                        format!("v{}", selected_ver)
-                    } else {
-                        selected_ver.clone()
-                    }
+            let display_ver = if has_versions {
+                selected_ver.clone()
+            } else if selected_ver.is_empty() {
+                "v1.0".to_string()
+            } else if selected_ver.starts_with('v') || selected_ver.starts_with('b') {
+                selected_ver.clone()
+            } else if selected_ver
+                .chars()
+                .next()
+                .map(|c| c.is_ascii_digit())
+                .unwrap_or(false)
+            {
+                format!("v{}", selected_ver)
+            } else {
+                selected_ver.clone()
+            };
+
+            let total_versions_count = if p.versions.is_empty() {
+                1
+            } else {
+                p.versions.len()
+            } as i32;
+
+            let installed_versions_count = if p.versions.is_empty() {
+                if is_installed {
+                    1
+                } else {
+                    0
                 }
+            } else {
+                p.versions
+                    .iter()
+                    .filter(|v| {
+                        app_state
+                            .service
+                            .engine
+                            .is_version_installed(&p.id, &v.version)
+                    })
+                    .count() as i32
+            };
+
+            let installed_versions_text = if total_versions_count > 1 {
+                benchhub::i18n::t("versions_installed_count")
+                    .replacen("{}", &installed_versions_count.to_string(), 1)
+                    .replacen("{}", &total_versions_count.to_string(), 1)
+            } else {
+                String::new()
             };
 
             BenchmarkItem {
@@ -910,13 +1021,28 @@ pub fn populate_initial_catalog(ui: &AppWindow, app_state: &crate::state::AppSta
                 description: localized_desc.into(),
                 installed: is_installed,
                 running: false,
+                is_downloading: false,
                 has_versions,
                 versions: ModelRc::from(Rc::new(VecModel::from(ver_strings))),
                 selected_version: selected_ver.into(),
                 selected_version_index: selected_ver_idx,
                 display_version: display_ver.into(),
+                installed_versions_count,
+                total_versions_count,
+                installed_versions_text: installed_versions_text.into(),
             }
         })
         .collect();
+
+    let installed_count = catalog_items
+        .iter()
+        .filter(|i| i.installed || i.installed_versions_count > 0)
+        .count();
+    let total_count = catalog_items.len();
+    let summary = benchhub::i18n::t("catalog_installed_summary")
+        .replacen("{}", &installed_count.to_string(), 1)
+        .replacen("{}", &total_count.to_string(), 1);
+    ui.set_catalog_installed_summary_text(summary.into());
+
     ui.set_catalog(ModelRc::from(Rc::new(VecModel::from(catalog_items))));
 }

@@ -1392,3 +1392,49 @@ pub fn get_power_profile() -> String {
 
     "Bilinmiyor".to_string()
 }
+
+/// Quickly reads the current CPU temperature in degrees Celsius from sysfs without a full system refresh.
+pub fn get_instant_cpu_temp() -> f32 {
+    // 1. Try hwmon paths
+    if let Ok(entries) = fs::read_dir("/sys/class/hwmon") {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Ok(files) = fs::read_dir(&path) {
+                for file in files.flatten() {
+                    let name = file.file_name();
+                    let name_str = name.to_string_lossy();
+                    if name_str.starts_with("temp") && name_str.ends_with("_input") {
+                        if let Ok(content) = fs::read_to_string(file.path()) {
+                            if let Ok(val) = content.trim().parse::<f32>() {
+                                let temp = val / 1000.0;
+                                if temp > 15.0 && temp < 130.0 {
+                                    return temp;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Try thermal_zone paths
+    if let Ok(entries) = fs::read_dir("/sys/class/thermal") {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            if name.to_string_lossy().starts_with("thermal_zone") {
+                let temp_path = entry.path().join("temp");
+                if let Ok(content) = fs::read_to_string(&temp_path) {
+                    if let Ok(val) = content.trim().parse::<f32>() {
+                        let temp = val / 1000.0;
+                        if temp > 15.0 && temp < 130.0 {
+                            return temp;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    0.0
+}

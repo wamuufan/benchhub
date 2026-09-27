@@ -7,9 +7,17 @@ pub const DEFAULT_TERMINAL_BUFFER_LINES: usize = 150;
 pub const DEFAULT_SAVE_STOPPED_RUNS: bool = true;
 pub const DEFAULT_SELECTED_GPU_MODE: &str = "Harici GPU (NVIDIA)";
 pub const DEFAULT_MAX_TEST_DURATION_SECS: u64 = 600;
+pub const DEFAULT_THERMAL_MODE: &str = "off";
+pub const DEFAULT_THERMAL_COOLDOWN_TEMP: u32 = 50;
+pub const DEFAULT_THERMAL_WARMUP_TEMP: u32 = 65;
+pub const DEFAULT_THERMAL_TIMEOUT_SECS: u32 = 30;
 
 pub const VALID_TELEMETRY_INTERVALS: [u64; 4] = [250, 500, 1000, 2000];
 pub const VALID_MAX_TEST_DURATIONS: [u64; 6] = [0, 60, 120, 180, 300, 600];
+pub const VALID_THERMAL_MODES: [&str; 4] = ["off", "cooldown", "warmup", "smart"];
+pub const VALID_COOLDOWN_TEMPS: [u32; 5] = [40, 45, 50, 55, 60];
+pub const VALID_WARMUP_TEMPS: [u32; 5] = [55, 60, 65, 70, 75];
+pub const VALID_THERMAL_TIMEOUTS: [u32; 5] = [15, 30, 45, 60, 120];
 pub const MIN_TERMINAL_BUFFER_LINES: usize = 50;
 pub const MAX_TERMINAL_BUFFER_LINES: usize = 1000;
 
@@ -37,6 +45,22 @@ fn default_max_test_duration_secs() -> u64 {
     DEFAULT_MAX_TEST_DURATION_SECS
 }
 
+fn default_thermal_mode() -> String {
+    DEFAULT_THERMAL_MODE.to_string()
+}
+
+fn default_thermal_cooldown_temp() -> u32 {
+    DEFAULT_THERMAL_COOLDOWN_TEMP
+}
+
+fn default_thermal_warmup_temp() -> u32 {
+    DEFAULT_THERMAL_WARMUP_TEMP
+}
+
+fn default_thermal_timeout_secs() -> u32 {
+    DEFAULT_THERMAL_TIMEOUT_SECS
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppSettings {
     #[serde(default = "default_telemetry_interval_ms")]
@@ -51,6 +75,16 @@ pub struct AppSettings {
     pub language: String,
     #[serde(default = "default_max_test_duration_secs")]
     pub max_test_duration_secs: u64,
+    #[serde(default = "default_thermal_mode")]
+    pub thermal_mode: String,
+    #[serde(default = "default_thermal_cooldown_temp")]
+    pub thermal_cooldown_temp: u32,
+    #[serde(default = "default_thermal_warmup_temp")]
+    pub thermal_warmup_temp: u32,
+    #[serde(default = "default_thermal_timeout_secs")]
+    pub thermal_timeout_secs: u32,
+    #[serde(default)]
+    pub custom_runners_dir: String,
 }
 
 impl Default for AppSettings {
@@ -62,6 +96,11 @@ impl Default for AppSettings {
             selected_gpu_mode: DEFAULT_SELECTED_GPU_MODE.to_string(),
             language: "tr".to_string(),
             max_test_duration_secs: DEFAULT_MAX_TEST_DURATION_SECS,
+            thermal_mode: DEFAULT_THERMAL_MODE.to_string(),
+            thermal_cooldown_temp: DEFAULT_THERMAL_COOLDOWN_TEMP,
+            thermal_warmup_temp: DEFAULT_THERMAL_WARMUP_TEMP,
+            thermal_timeout_secs: DEFAULT_THERMAL_TIMEOUT_SECS,
+            custom_runners_dir: String::new(),
         }
     }
 }
@@ -127,6 +166,30 @@ impl AppSettings {
         } else if self.language == "English" {
             self.language = "en".to_string();
         }
+
+        self.thermal_mode = self.thermal_mode.to_lowercase();
+        if !VALID_THERMAL_MODES.contains(&self.thermal_mode.as_str()) {
+            tracing::warn!(
+                "Geçersiz termal şartlandırma modu: '{}'. '{}' varsayılanına dönülüyor.",
+                self.thermal_mode,
+                DEFAULT_THERMAL_MODE
+            );
+            self.thermal_mode = DEFAULT_THERMAL_MODE.to_string();
+        }
+
+        if self.thermal_cooldown_temp < 35 || self.thermal_cooldown_temp > 75 {
+            self.thermal_cooldown_temp = self.thermal_cooldown_temp.clamp(35, 75);
+        }
+
+        if self.thermal_warmup_temp < 45 || self.thermal_warmup_temp > 95 {
+            self.thermal_warmup_temp = self.thermal_warmup_temp.clamp(45, 95);
+        }
+
+        if self.thermal_timeout_secs < 5 || self.thermal_timeout_secs > 300 {
+            self.thermal_timeout_secs = self.thermal_timeout_secs.clamp(5, 300);
+        }
+
+        self.custom_runners_dir = self.custom_runners_dir.trim().to_string();
     }
 }
 
@@ -204,6 +267,45 @@ pub fn format_max_test_duration(secs: u64, lang: &str) -> String {
             }
         }
     }
+}
+
+/// Parses the UI thermal mode option string to a normalized setting string.
+pub fn parse_thermal_mode(val: &str) -> &'static str {
+    let lower = val.to_lowercase();
+    if lower.contains("cooldown") || lower.contains("soğutma") {
+        "cooldown"
+    } else if lower.contains("warmup") || lower.contains("ısıtma") {
+        "warmup"
+    } else if lower.contains("smart") || lower.contains("akıllı") {
+        "smart"
+    } else {
+        "off"
+    }
+}
+
+/// Parses the UI cooldown temperature string (e.g. "50 °C (Varsayılan)" -> 50).
+pub fn parse_cooldown_temp(val: &str) -> u32 {
+    val.split_whitespace()
+        .next()
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(DEFAULT_THERMAL_COOLDOWN_TEMP)
+}
+
+/// Parses the UI warmup temperature string (e.g. "65 °C (Varsayılan)" -> 65).
+pub fn parse_warmup_temp(val: &str) -> u32 {
+    val.split_whitespace()
+        .next()
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(DEFAULT_THERMAL_WARMUP_TEMP)
+}
+
+/// Parses the UI thermal timeout string (e.g. "30 sn (Varsayılan)" or "30s" -> 30).
+pub fn parse_thermal_timeout(val: &str) -> u32 {
+    val.split_whitespace()
+        .next()
+        .map(|s| s.trim_end_matches("sn").trim_end_matches('s'))
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(DEFAULT_THERMAL_TIMEOUT_SECS)
 }
 
 /// Loads and validates application settings from the specified JSON file path.
@@ -312,6 +414,10 @@ mod tests {
         assert_eq!(defaults.selected_gpu_mode, "Harici GPU (NVIDIA)");
         assert_eq!(defaults.language, "tr");
         assert_eq!(defaults.max_test_duration_secs, 600);
+        assert_eq!(defaults.thermal_mode, "off");
+        assert_eq!(defaults.thermal_cooldown_temp, 50);
+        assert_eq!(defaults.thermal_warmup_temp, 65);
+        assert_eq!(defaults.thermal_timeout_secs, 30);
     }
 
     #[test]
@@ -323,6 +429,11 @@ mod tests {
             selected_gpu_mode: "invalid_mode".into(),
             language: "invalid_lang".into(),
             max_test_duration_secs: 9999, // invalid
+            thermal_mode: "invalid_mode".into(),
+            thermal_cooldown_temp: 10, // below 35
+            thermal_warmup_temp: 110,  // above 95
+            thermal_timeout_secs: 2,   // below 10
+            custom_runners_dir: String::new(),
         };
         s.sanitize();
         assert_eq!(s.telemetry_interval_ms, 500);
@@ -330,6 +441,10 @@ mod tests {
         assert_eq!(s.selected_gpu_mode, "System Default");
         assert_eq!(s.language, "tr");
         assert_eq!(s.max_test_duration_secs, 600);
+        assert_eq!(s.thermal_mode, "off");
+        assert_eq!(s.thermal_cooldown_temp, 35);
+        assert_eq!(s.thermal_warmup_temp, 95);
+        assert_eq!(s.thermal_timeout_secs, 5);
 
         let mut s2 = AppSettings {
             telemetry_interval_ms: 1000,
@@ -338,6 +453,11 @@ mod tests {
             selected_gpu_mode: "iGPU Dahili".into(),
             language: "English".into(),
             max_test_duration_secs: 180,
+            thermal_mode: "Cooldown".into(),
+            thermal_cooldown_temp: 45,
+            thermal_warmup_temp: 70,
+            thermal_timeout_secs: 60,
+            custom_runners_dir: String::new(),
         };
         s2.sanitize();
         assert_eq!(s2.telemetry_interval_ms, 1000);
@@ -345,6 +465,10 @@ mod tests {
         assert_eq!(s2.selected_gpu_mode, "Dahili GPU (iGPU)");
         assert_eq!(s2.language, "en");
         assert_eq!(s2.max_test_duration_secs, 180);
+        assert_eq!(s2.thermal_mode, "cooldown");
+        assert_eq!(s2.thermal_cooldown_temp, 45);
+        assert_eq!(s2.thermal_warmup_temp, 70);
+        assert_eq!(s2.thermal_timeout_secs, 60);
     }
 
     #[test]
@@ -378,6 +502,8 @@ mod tests {
         assert_eq!(loaded.terminal_buffer_lines, 150);
         assert!(loaded.save_stopped_runs);
         assert_eq!(loaded.selected_gpu_mode, "Harici GPU (NVIDIA)");
+        assert_eq!(loaded.thermal_mode, "off");
+        assert_eq!(loaded.thermal_cooldown_temp, 50);
 
         let _ = fs::remove_dir_all(&tmp_dir);
     }
@@ -398,6 +524,7 @@ mod tests {
             selected_gpu_mode: "Dahili GPU (iGPU)".into(),
             language: "tr".into(),
             max_test_duration_secs: 120,
+            ..AppSettings::default()
         };
 
         save_settings(&config_file, &settings).unwrap();

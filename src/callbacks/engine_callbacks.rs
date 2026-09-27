@@ -80,6 +80,7 @@ pub fn register_engine_callbacks(ui: &AppWindow, app_state: &AppState) {
                 if let Some(mut item) = catalog.row_data(i) {
                     if item.id == id {
                         item.running = true;
+                        item.is_downloading = true;
                         catalog.set_row_data(i, item);
                     }
                 }
@@ -170,13 +171,51 @@ pub fn register_engine_callbacks(ui: &AppWindow, app_state: &AppState) {
                         if let Some(mut item) = catalog.row_data(i) {
                             if item.id == bench_id.as_str() {
                                 item.running = false;
-                                if is_success && item.selected_version == ver_str.as_str() {
-                                    item.installed = true;
+                                item.is_downloading = false;
+                                if is_success {
+                                    if item.selected_version == ver_str.as_str() {
+                                        item.installed = true;
+                                    }
+                                    if item.total_versions_count > 1 {
+                                        item.installed_versions_count += 1;
+                                        if item.installed_versions_count > item.total_versions_count
+                                        {
+                                            item.installed_versions_count =
+                                                item.total_versions_count;
+                                        }
+                                        item.installed_versions_text =
+                                            benchhub::i18n::t("versions_installed_count")
+                                                .replacen(
+                                                    "{}",
+                                                    &item.installed_versions_count.to_string(),
+                                                    1,
+                                                )
+                                                .replacen(
+                                                    "{}",
+                                                    &item.total_versions_count.to_string(),
+                                                    1,
+                                                )
+                                                .into();
+                                    }
                                 }
                                 catalog.set_row_data(i, item);
                             }
                         }
                     }
+
+                    let mut installed_count = 0;
+                    for i in 0..catalog.row_count() {
+                        if let Some(item) = catalog.row_data(i) {
+                            if item.installed || item.installed_versions_count > 0 {
+                                installed_count += 1;
+                            }
+                        }
+                    }
+                    let total_count = catalog.row_count();
+                    let summary = benchhub::i18n::t("catalog_installed_summary")
+                        .replacen("{}", &installed_count.to_string(), 1)
+                        .replacen("{}", &total_count.to_string(), 1);
+                    ui.set_catalog_installed_summary_text(summary.into());
 
                     ui.set_is_installing(false);
                     ui.set_install_finished(true);
@@ -508,7 +547,7 @@ async fn execute_single_benchmark_flow(
         effective.description.as_deref().unwrap_or_default(),
     );
 
-    let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+    let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
     *app_state.active_cancel_tx.lock().await = Some(cancel_tx);
 
     let _ = slint::invoke_from_event_loop({
@@ -541,6 +580,73 @@ async fn execute_single_benchmark_flow(
         "=== [BenchHub] Test: {} ===\n",
         localized_name
     )));
+
+    // Thermal Conditioning (Warmup / Cooldown)
+    let thermal_settings = {
+        let s = app_state.settings.lock().unwrap_or_else(|e| e.into_inner());
+        s.clone()
+    };
+
+    let term_tx_thermal = app_state.terminal_tx.clone();
+    let ui_weak_thermal = ui_weak.clone();
+
+    let conditioning_ok = benchhub::thermal::run_thermal_conditioning(
+        &thermal_settings,
+        &mut cancel_rx,
+        move |msg| {
+            let _ = term_tx_thermal.try_send(TerminalMsg::Append(msg));
+        },
+        move |status_msg| {
+            let ui_w = ui_weak_thermal.clone();
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(ui) = ui_w.upgrade() {
+                    ui.set_status_text(status_msg.into());
+                }
+            });
+        },
+    )
+    .await;
+
+    if !conditioning_ok {
+        // User cancelled during thermal conditioning
+        let _ = slint::invoke_from_event_loop({
+            let ui_weak = ui_weak.clone();
+            let bench_id = bench_id.clone();
+            move || {
+                if let Some(ui) = ui_weak.upgrade() {
+                    let catalog = ui.get_catalog();
+                    for i in 0..catalog.row_count() {
+                        if let Some(mut item) = catalog.row_data(i) {
+                            if item.id == bench_id.as_str() {
+                                item.running = false;
+                                catalog.set_row_data(i, item);
+                            }
+                        }
+                    }
+                    ui.set_is_benchmark_running(false);
+                    ui.set_status_text(benchhub::i18n::t("status_cancelled").into());
+                }
+            }
+        });
+        app_state
+            .is_recording_samples
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        let mut opt_tx = app_state.active_cancel_tx.lock().await;
+        *opt_tx = None;
+        return false;
+    }
+
+    // Conditioning complete. Restore running status text and reset telemetry samples for actual test
+    let _ = slint::invoke_from_event_loop({
+        let ui_weak = ui_weak.clone();
+        let localized_name = localized_name.clone();
+        move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                let status_msg = benchhub::i18n::t("status_running").replace("{}", &localized_name);
+                ui.set_status_text(status_msg.into());
+            }
+        }
+    });
 
     // Reset telemetry samples
     app_state.current_samples.lock().await.clear();

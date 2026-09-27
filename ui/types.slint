@@ -6,11 +6,15 @@ export struct BenchmarkItem {
     description: string,
     installed: bool,
     running: bool,
+    is_downloading: bool,
     has_versions: bool,
     versions: [string],
     selected_version: string,
     selected_version_index: int,
     display_version: string,
+    installed_versions_count: int,
+    total_versions_count: int,
+    installed_versions_text: string,
 }
 
 export struct HistoryItem {
