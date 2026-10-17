@@ -36,16 +36,22 @@ cc = "1"
 [dev-dependencies]
 tempfile = "3"
 
+# Geliştirme (debug) profili: Kendi kodlarımız için satır ve hata takibi (DWARF sembollerini sınırlar)
 [profile.dev]
 opt-level = 1
+debug = 1
 
+# Dış kütüphanelerin (Slint, resvg, Tokio vb.) devasa DWARF debug tablolarını kapatır.
+# Disk kullanımını devasa oranda düşürür, derleme ve linkleme hızını belirgin şekilde artırır.
 [profile.dev.package."*"]
-opt-level = 3
+opt-level = 2
+debug = false
 
+# Sürüm (release) profili: Maksimum sıkıştırma, LTO optimizasyonu ve sembol temizliği
 [profile.release]
 opt-level = 3
 lto = "thin"
-codegen-units = 16
+codegen-units = 1
 panic = "abort"
 strip = true
 
