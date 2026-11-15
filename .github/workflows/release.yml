@@ -96,7 +96,7 @@ jobs:
       - name: Build Snap package
         run: |
           sudo snap install snapcraft --classic
-          snapcraft pack --destructive-mode
+          sudo snapcraft pack --destructive-mode --verbose
           SNAP_FILE="$(ls -1t benchhub_*.snap | head -n 1)"
           mv -f "$SNAP_FILE" benchhub-linux-x86_64.snap
           sha256sum benchhub-linux-x86_64.snap > benchhub-linux-x86_64.snap.sha256
