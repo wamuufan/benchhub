@@ -1,27 +1,35 @@
-fio (Flexible I/O Tester) Software License
-============================================
+fio (Flexible I/O Tester) Software License & Moral License
+============================================================
 
 fio - Flexible I/O tester
 Copyright (C) 2005-2024 Jens Axboe <axboe@kernel.dk>
-Website: https://github.com/axboe/fio
+Repository   : https://github.com/axboe/fio
+Full GPLv2   : https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
 This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License version 2 as published by the
-Free Software Foundation.
+the terms of the GNU General Public License version 2 (GPLv2) as published by
+the Free Software Foundation (see COPYING in the upstream source archive).
 
-1. PERMISSIONS & CONDITIONS:
-You may copy, distribute, and modify fio under the terms of GNU GPL version 2.
-Any binary redistribution must make the corresponding machine-readable source
-code available under the terms of the GPLv2.
+1. PERMISSIONS & CONDITIONS (GNU GPLv2):
+- You may run, copy, distribute, and modify fio under the terms of GNU GPL v2.
+- Any binary redistribution must preserve license notices and make the
+  corresponding machine-readable source code available under GPLv2.
 
-2. STORAGE DEVICE STRESS WARNING:
+2. UPSTREAM MORAL LICENSE & PUBLICATION RULES (MORAL-LICENSE):
+When publishing or sharing benchmark results obtained with fio, upstream expects
+users to uphold the following attribution and contribution rules:
+- Clearly state that `fio` was used to produce the results and specify the
+  exact `fio` version tested.
+- Any new features or bug fixes developed for fio should be submitted upstream.
+
+3. STORAGE DEVICE STRESS WARNING:
 fio is a high-performance I/O workload engine capable of driving storage devices
 (SSDs, NVMe drives, HDDs) to their physical and thermal throughput limits.
 Users should exercise caution when configuring long-duration, high-queue-depth,
 or raw-block device write tests, as extreme sustained write workloads may accelerate
 storage wear or degrade flash endurance.
 
-3. DISCLAIMER:
+4. DISCLAIMER:
 THIS PROGRAM IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL, BUT WITHOUT ANY
 WARRANTY; WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS FOR A
 PARTICULAR PURPOSE. See the GNU General Public License version 2 for more details.

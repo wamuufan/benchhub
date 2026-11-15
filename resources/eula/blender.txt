@@ -1,27 +1,31 @@
-Blender Foundation Software License Agreement
-==============================================
+Blender Benchmark Software & Open Data License Notice
+======================================================
 
-Blender Benchmark & Blender Software
+Blender & benchmark-launcher-cli
 Copyright (C) Blender Foundation / blender.org
+Official License Info: https://www.blender.org/about/license/
+Blender Open Data    : https://opendata.blender.org/
 
-Blender is Free and Open Source software released under the GNU General Public
-License (GPL) version 2 or later.
+1. SOFTWARE LICENSE (GNU GPL):
+Blender and the Blender Benchmark launcher (`benchmark-launcher-cli`) are Free
+and Open Source software released under the GNU General Public License (GPL),
+version 2 or later (GPL-3.0-or-later for current releases).
+- You are free to run Blender Benchmark for any purpose (commercial, personal,
+  or educational).
+- You are free to study how the program works, adapt it to your needs, and
+  redistribute copies or improvements under the terms of the GNU GPL.
+- Full license texts: https://www.gnu.org/licenses/gpl-3.0.html
 
-1. FREEDOMS GRANTED UNDER GNU GPL:
-- You are free to run Blender for any purpose (commercial, personal, educational).
-- You are free to study how the program works and adapt it to your needs.
-- You are free to redistribute copies of Blender under the terms of the GNU GPL.
-- You are free to improve the program and release your improvements to the public.
-
-2. BENCHMARK ASSETS & SCENES:
-The test scenes utilized by Blender Benchmark (including "Monster", "Junkshop", "Classroom")
-are creative assets created by the Blender community and the Blender Studio, distributed
-under Creative Commons Attribution (CC-BY) or GPL-compatible licenses.
+2. BENCHMARK SCENES & OPEN DATA (CC0):
+Test scenes utilized by Blender Benchmark (such as "Monster", "Junkshop", and
+"Classroom") and benchmark results shared on Blender Open Data
+(https://opendata.blender.org/) are dedicated to the public domain under
+Creative Commons Zero (CC0 1.0 Universal).
 
 3. DISCLAIMER OF WARRANTY:
-BECAUSE THE PROGRAM IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY FOR THE PROGRAM,
-TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE
-COPYRIGHT HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY
-OF ANY KIND, EITHER EXPRESSED OR IMPLIED. IN NO EVENT WILL ANY COPYRIGHT HOLDER BE
-LIABLE TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL
-DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM.
+BECAUSE THE PROGRAM IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY FOR THE
+PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED
+IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS"
+WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED. IN NO EVENT WILL ANY
+COPYRIGHT HOLDER BE LIABLE TO YOU FOR DAMAGES ARISING FROM THE USE OR INABILITY
+TO USE THE PROGRAM.

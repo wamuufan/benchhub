@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux:
+    name: Build & Release BenchHub #${{ github.run_number }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            libsqlite3-dev \
+            libssl-dev \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libfontconfig1-dev \
+            libxkbcommon-dev \
+            libx11-dev
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy
+
+      - name: Cargo Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Trunk
+        uses: taiki-e/install-action@v2
+        with:
+          tool: trunk
+
+      - name: Build Leptos WASM frontend
+        run: |
+          cd crates/benchhub-gui
+          trunk build --config Trunk.toml --release
+
+      - name: Run workspace tests
+        run: cargo test --workspace
+
+      - name: Build release binaries
+        run: |
+          cargo build --release -p benchhub-daemon
+          touch crates/benchhub-gui/src-tauri/build.rs crates/benchhub-gui/src-tauri/src/lib.rs
+          cargo build --release -p benchhub-desktop --features custom-protocol
+
+      - name: Package release archive
+        run: |
+          mkdir -p benchhub-linux-x86_64/Benchhub-bin
+          cp scripts/install.sh benchhub-linux-x86_64/install.sh
+          cp INSTALLATION.md benchhub-linux-x86_64/INSTALLATION.md
+          cp README.md benchhub-linux-x86_64/README.md
+          cp LICENSE benchhub-linux-x86_64/LICENSE
+          cp target/release/benchhubd benchhub-linux-x86_64/Benchhub-bin/benchhubd
+          cp target/release/benchhub-desktop benchhub-linux-x86_64/Benchhub-bin/benchhub-desktop
+          cp scripts/benchhub-launch.sh benchhub-linux-x86_64/Benchhub-bin/benchhub-launch.sh
+          cp scripts/uninstall.sh benchhub-linux-x86_64/Benchhub-bin/uninstall.sh
+          chmod 755 \
+            benchhub-linux-x86_64/install.sh \
+            benchhub-linux-x86_64/Benchhub-bin/benchhubd \
+            benchhub-linux-x86_64/Benchhub-bin/benchhub-desktop \
+            benchhub-linux-x86_64/Benchhub-bin/benchhub-launch.sh \
+            benchhub-linux-x86_64/Benchhub-bin/uninstall.sh
+          tar -czf benchhub-linux-x86_64.tar.gz benchhub-linux-x86_64
+          sha256sum benchhub-linux-x86_64.tar.gz > benchhub-linux-x86_64.tar.gz.sha256
+
+      - name: Build Flatpak bundle
+        run: |
+          sudo apt-get install -y flatpak flatpak-builder
+          sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --install-deps-from=flathub --repo=repo --force-clean build-dir packaging/flatpak/org.benchhub.BenchHub.yml
+          flatpak build-bundle repo benchhub-linux-x86_64.flatpak org.benchhub.BenchHub
+          sha256sum benchhub-linux-x86_64.flatpak > benchhub-linux-x86_64.flatpak.sha256
+          rm -rf build-dir repo
+
+      - name: Build Snap package
+        run: |
+          sudo snap install snapcraft --classic
+          snapcraft pack --destructive-mode
+          SNAP_FILE="$(ls -1t benchhub_*.snap | head -n 1)"
+          mv -f "$SNAP_FILE" benchhub-linux-x86_64.snap
+          sha256sum benchhub-linux-x86_64.snap > benchhub-linux-x86_64.snap.sha256
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: BenchHub v${{ github.run_number }}
+          generate_release_notes: true
+          files: |
+            benchhub-linux-x86_64.tar.gz
+            benchhub-linux-x86_64.tar.gz.sha256
+            benchhub-linux-x86_64.flatpak
+            benchhub-linux-x86_64.flatpak.sha256
+            benchhub-linux-x86_64.snap
+            benchhub-linux-x86_64.snap.sha256

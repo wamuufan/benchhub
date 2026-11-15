@@ -1,34 +1,41 @@
-Tellusim Technologies Inc. GravityMark End User License Agreement (EULA)
-========================================================================
+Tellusim Technologies Inc. - GravityMark License Summary Notice
+=================================================================
+Software       : GravityMark GPU Benchmark
+Official Portal: https://gravitymark.tellusim.com/
+Commercial Info: https://gravitymark.tellusim.com/pro/
+Copyright (C) 2020-2025 Tellusim Technologies Inc. All rights reserved.
 
-GravityMark Copyright (C) 2020-2024 Tellusim Technologies Inc.
-Website: https://tellusim.com/gravitymark/
+[IMPORTANT - SUMMARY NOTICE ONLY]
+This notice summarizes key licensing boundaries for Tellusim GravityMark. The
+official, binding GravityMark Evaluation License (and Commercial License
+Addendum) is published by Tellusim Technologies Inc. on its official portal at
+https://gravitymark.tellusim.com/. By installing or running GravityMark through
+BenchHub, you agree to comply with Tellusim's official Evaluation License terms.
 
-IMPORTANT: READ THIS AGREEMENT CAREFULLY BEFORE DOWNLOADING, INSTALLING, OR USING
-TELLUSIM GRAVITYMARK GPU BENCHMARK SOFTWARE.
+1. EVALUATION LICENSE (NON-COMMERCIAL / NON-PRODUCTION ONLY):
+- GravityMark free downloads are governed by the GravityMark Evaluation License.
+- Permitted solely for personal, academic, evaluation, and non-commercial GPU
+  testing.
+- You SHALL NOT use the evaluation software in a production environment, for
+  pre-sale testing, or for commercial product demonstrations.
 
-1. LICENSE GRANT:
-Tellusim Technologies Inc. ("Tellusim") grants you a non-exclusive, non-transferable,
-royalty-free license to download, install, and execute GravityMark for personal,
-evaluation, academic, and non-commercial GPU stress-testing and benchmarking purposes.
+2. COMMERCIAL / PRODUCTION USE (COMMERCIAL LICENSE ADDENDUM):
+- Any commercial usage, vendor hardware qualification, production deployment,
+  or commercial demonstration requires purchasing a paid GravityMark Pro /
+  Commercial License Addendum (https://gravitymark.tellusim.com/pro/).
+- Commercial licensees publishing test results must include Tellusim's
+  attribution notice (e.g., "Tested with Tellusim GravityMark").
 
-2. COMMERCIAL USE:
-Any commercial use, including hardware manufacturing qualification, vendor benchmarking,
-or incorporation into commercial benchmarking suites, requires a separate commercial
-license agreement with Tellusim Technologies Inc.
-
-3. PROPRIETARY RIGHTS & RESTRICTIONS:
-- GravityMark, its 3D engine, shaders, textures, assets, and documentation are proprietary
-  works of Tellusim Technologies Inc. and protected by international copyright laws.
-- You shall NOT modify, reverse engineer, decompile, or disassemble GravityMark binaries.
-- You shall NOT bypass, disable, or alter any benchmark scoring, watermark, or timing routines.
-- You shall NOT redistribute the installer without preserving all original Tellusim copyright
-  and trademark notices.
+3. PROPRIETARY RESTRICTIONS & INSTALLER NOTICE:
+- GravityMark, its 3D engine, shaders, textures, assets, and scoring logic are
+  proprietary works of Tellusim Technologies Inc. Decompiling, reverse
+  engineering, modifying, or altering scoring/timing is prohibited.
+- Note: BenchHub unpacks the official GravityMark `.run` archive non-interactively
+  (`--tar -xf`); therefore, your acceptance here serves in place of the
+  interactive click-through prompt during extraction.
 
 4. DISCLAIMER OF WARRANTY:
-GRAVITYMARK IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. TELLUSIM DISCLAIMS ALL
-WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE, AND ACCURACY OF GRAPHICS HARDWARE READINGS.
-IN NO EVENT SHALL TELLUSIM BE LIABLE FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR
-CONSEQUENTIAL DAMAGES (INCLUDING HARDWARE FAILURE, THERMAL SHUTDOWN, OR DATA LOSS)
-RESULTING FROM THE OPERATION OF GRAVITYMARK.
+GRAVITYMARK IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. TELLUSIM
+DISCLAIMS ALL EXPRESS OR IMPLIED WARRANTIES AND SHALL NOT BE LIABLE FOR ANY
+DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES (INCLUDING
+HARDWARE FAILURE, THERMAL SHUTDOWN, OR DATA LOSS).

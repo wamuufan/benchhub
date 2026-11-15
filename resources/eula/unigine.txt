@@ -77,3 +77,12 @@ DAMAGE.
 Without prejudice to any other rights, "Developer" may cancel this EULA if you do not abide by
 the terms and conditions of this EULA, in which case you must destroy all copies of the
 "Software Product" and all of its component parts.
+
+[BenchHub Installer & Entity Notice]
+- Official UNIGINE Benchmarks Portal: https://benchmark.unigine.com/
+  (Updated UNIGINE licensing entities on newer web editions reference
+  UNIGINE Interactive FZ LLC / UNIGINE Corp.)
+- BenchHub extracts `Unigine_Superposition-1.1.run` non-interactively
+  (`--tar -xf`). By confirming the acceptance checkbox below, you agree to
+  this EULA on behalf of yourself (or your entity for Pro use) prior to
+  extraction.

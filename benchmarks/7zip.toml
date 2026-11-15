@@ -1,19 +1,19 @@
 id = "7zip"
-name = "7-Zip Sıkıştırma Testi"
-category = "İşlemci (CPU)"
+name = "7-Zip Compression Benchmark"
+category = "CPU"
 download_size = "~1.9 MB"
-description = "Çoklu çekirdek LZMA/LZMA2 sıkıştırma ve açma işlemci testidir."
+description = "Multi-threaded LZMA/LZMA2 compression and decompression CPU benchmark."
 default_version = "24.08"
 score_regex = "Tot:\\s+\\d+\\s+\\d+\\s+(\\d+)"
 score_unit = "MIPS"
 run_cmd = "./7zz"
 run_args = ["b"]
-download_cmd = "([ -n \"$SNAP\" ] || [ -n \"$FLATPAK_ID\" ] || [ -f /.flatpak-info ]) && (command -v 7zz >/dev/null 2>&1 || command -v 7z >/dev/null 2>&1) || (wget -nv -c https://github.com/ip7z/7zip/releases/download/24.08/7z2408-linux-x64.tar.xz && tar --no-same-owner --no-same-permissions -xf 7z2408-linux-x64.tar.xz 7zz && chmod +x 7zz)"
+download_cmd = "([ -n \"$SNAP\" ] || [ -n \"$FLATPAK_ID\" ] || [ -f /.flatpak-info ]) && (command -v 7zz >/dev/null 2>&1 || command -v 7z >/dev/null 2>&1) || (wget --progress=bar:force:noscroll -c https://github.com/ip7z/7zip/releases/download/24.08/7z2408-linux-x64.tar.xz && tar --no-same-owner --no-same-permissions -xf 7z2408-linux-x64.tar.xz 7zz && rm -f 7z2408-linux-x64.tar.xz && chmod +x 7zz)"
 
 [[versions]]
 version = "24.08"
 download_size = "~1.9 MB"
-download_cmd = "([ -n \"$SNAP\" ] || [ -n \"$FLATPAK_ID\" ] || [ -f /.flatpak-info ]) && (command -v 7zz >/dev/null 2>&1 || command -v 7z >/dev/null 2>&1) || (wget -nv -c https://github.com/ip7z/7zip/releases/download/24.08/7z2408-linux-x64.tar.xz && tar --no-same-owner --no-same-permissions -xf 7z2408-linux-x64.tar.xz 7zz && chmod +x 7zz)"
+download_cmd = "([ -n \"$SNAP\" ] || [ -n \"$FLATPAK_ID\" ] || [ -f /.flatpak-info ]) && (command -v 7zz >/dev/null 2>&1 || command -v 7z >/dev/null 2>&1) || (wget --progress=bar:force:noscroll -c https://github.com/ip7z/7zip/releases/download/24.08/7z2408-linux-x64.tar.xz && tar --no-same-owner --no-same-permissions -xf 7z2408-linux-x64.tar.xz 7zz && rm -f 7z2408-linux-x64.tar.xz && chmod +x 7zz)"
 run_cmd = "./7zz"
 run_args = ["b"]
 score_regex = "Tot:\\s+\\d+\\s+\\d+\\s+(\\d+)"

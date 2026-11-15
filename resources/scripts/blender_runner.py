@@ -14,6 +14,74 @@ def find_file(patterns):
             return matches[0]
     return None
 
+def resolve_device_type(explicit_device_type, requested_device_type, env):
+    if explicit_device_type and requested_device_type.upper() != "AUTO":
+        return requested_device_type
+    nv_offload = env.get("__NV_PRIME_RENDER_OFFLOAD", "0")
+    if nv_offload == "1":
+        return "OPTIX"
+    return "CPU"
+
+
+def build_blender_search_patterns(search_dirs, homes, blender_version=None):
+    patterns = []
+    if blender_version:
+        ver = blender_version.strip()
+        for d in search_dirs:
+            patterns.append(os.path.join(d, f"blender-{ver}*/blender"))
+            patterns.append(os.path.join(d, f"blender-versions/{ver}*/blender"))
+            patterns.append(os.path.join(d, f"blender-versions/*/*{ver}*/blender"))
+            patterns.append(os.path.join(d, f"*/*{ver}*/blender"))
+        for h in homes:
+            patterns.append(
+                os.path.join(
+                    h, f".cache/blender-benchmark-launcher/blender-versions/*{ver}*/**/blender"
+                )
+            )
+            patterns.append(
+                os.path.join(
+                    h, f".cache/blender-benchmark-launcher/blender-versions/*/*{ver}*/blender"
+                )
+            )
+            patterns.append(
+                os.path.join(
+                    h, f".local/share/benchhub/runners/blender/{ver}*/**/blender"
+                )
+            )
+
+    patterns.extend([os.path.join(d, "blender") for d in search_dirs])
+    patterns.extend([os.path.join(d, "blender-*/blender") for d in search_dirs])
+    patterns.extend([os.path.join(d, "*/*/blender") for d in search_dirs])
+    for h in homes:
+        patterns.append(os.path.join(h, ".cache/blender-benchmark-launcher/blender-versions/*/*/blender"))
+        patterns.append(os.path.join(h, ".local/share/benchhub/runners/blender/*/*/blender"))
+    return patterns
+
+
+def parse_benchmark_args(args, env):
+    scene_name = "monster"
+    device_type = "CPU"
+    explicit_device_type = False
+    blender_version = None
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ["monster", "junkshop", "classroom"]:
+            scene_name = arg
+        elif arg == "--device-type" and i + 1 < len(args):
+            device_type = args[i + 1]
+            explicit_device_type = True
+            i += 1
+        elif arg == "--blender-version" and i + 1 < len(args):
+            blender_version = args[i + 1]
+            i += 1
+        i += 1
+
+    final_device = resolve_device_type(explicit_device_type, device_type, env)
+    return scene_name, final_device, blender_version
+
+
 def main():
     args = sys.argv[1:]
 
@@ -39,35 +107,11 @@ def main():
     cwd = os.getcwd()
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Parse arguments
-    scene_name = "monster"
-    device_type = "CPU"
-
-    # Search for scene name and device type
-    for i, arg in enumerate(args):
-        if arg in ["monster", "junkshop", "classroom"]:
-            scene_name = arg
-        elif arg == "--device-type" and i + 1 < len(args):
-            device_type = args[i + 1]
-
-    # If GPU mode environment variables are set and device_type wasn't explicitly overridden to something else
-    if device_type == "CPU":
-        nv_offload = os.environ.get("__NV_PRIME_RENDER_OFFLOAD", "0")
-        if nv_offload == "1":
-            device_type = "OPTIX"
+    scene_name, device_type, blender_version = parse_benchmark_args(args, os.environ)
 
     # 1. Locate Blender executable
     search_dirs = [cwd, script_dir]
-    blender_patterns = [
-        os.path.join(d, "blender") for d in search_dirs
-    ] + [
-        os.path.join(d, "blender-*/blender") for d in search_dirs
-    ] + [
-        os.path.join(d, "*/*/blender") for d in search_dirs
-    ]
-    for h in homes:
-        blender_patterns.append(os.path.join(h, ".cache/blender-benchmark-launcher/blender-versions/*/*/blender"))
-        blender_patterns.append(os.path.join(h, ".local/share/benchhub/runners/blender/*/*/blender"))
+    blender_patterns = build_blender_search_patterns(search_dirs, homes, blender_version)
 
     blender_bin = find_file(blender_patterns)
     if not blender_bin:

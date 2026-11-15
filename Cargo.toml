@@ -1,18 +1,13 @@
-[package]
-name = "benchhub"
-version = "0.1.0"
-edition = "2021"
-build = "build.rs"
+[workspace]
+members = [
+    "crates/*",
+    "crates/benchhub-gui/src-tauri",
+]
+resolver = "2"
 
-[lib]
-name = "benchhub"
-path = "src/lib.rs"
-
-[[bin]]
-name = "benchhub"
-path = "src/main.rs"
-
-[dependencies]
+[workspace.dependencies]
+benchhub-core = { path = "crates/benchhub-core" }
+benchhub-types = { path = "crates/benchhub-types" }
 tokio = { version = "1", features = ["full"] }
 rusqlite = { version = "0.31", features = ["bundled"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -21,37 +16,46 @@ toml = "0.8"
 sysinfo = "0.30"
 regex = "1.10"
 anyhow = "1.0"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 dirs = "5.0"
 libc = "0.2"
-slint = "1.17.1"
 resvg = "0.48.1"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
-[build-dependencies]
-slint-build = "1.17.1"
-cc = "1"
-
-[dev-dependencies]
 tempfile = "3"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+rustls-pki-types = "1"
+webpki-roots = "1"
+rcgen = { version = "0.13", default-features = false, features = ["crypto", "ring", "pem"] }
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+httparse = "1.10"
 
-# Geliştirme (debug) profili: Kendi kodlarımız için satır ve hata takibi (DWARF sembollerini sınırlar)
+# Tauri v2 dependencies
+tauri = { version = "2" }
+tauri-build = { version = "2" }
+
+# Leptos and WASM dependencies
+leptos = { version = "0.8", features = ["csr"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+serde-wasm-bindgen = "0.6"
+js-sys = "0.3"
+
+# Development (debug) profile: line and error tracking for internal code (limits DWARF symbols)
 [profile.dev]
 opt-level = 1
 debug = 1
 
-# Dış kütüphanelerin (Slint, resvg, Tokio vb.) devasa DWARF debug tablolarını kapatır.
-# Disk kullanımını devasa oranda düşürür, derleme ve linkleme hızını belirgin şekilde artırır.
+# Disables massive DWARF debug tables of external crates (resvg, Tokio, etc.).
+# Significantly reduces disk usage, speeds up compilation and linking.
 [profile.dev.package."*"]
 opt-level = 2
 debug = false
 
-# Sürüm (release) profili: Maksimum sıkıştırma, LTO optimizasyonu ve sembol temizliği
+# Release profile: maximum optimization, LTO and symbol stripping
 [profile.release]
 opt-level = 3
 lto = "thin"
 codegen-units = 1
 panic = "abort"
 strip = true
-

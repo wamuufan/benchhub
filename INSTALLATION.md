@@ -1,230 +1,128 @@
 # BenchHub Installation Guide
 
-This document provides complete instructions for installing dependencies, compiling, and running BenchHub on Ubuntu (22.04 LTS, 24.04 LTS, 26.04 LTS and newer) and Debian-based Linux distributions.
+This guide covers installing BenchHub from the prebuilt Linux release archive (`benchhub-linux-x86_64.tar.gz`), building from source, and creating Flatpak or Snap distribution packages.
 
 ---
 
-## 1. Rust Toolchain Installation
+## 1. Runtime Dependencies
 
-BenchHub is written in Rust. You can install the Rust toolchain on Ubuntu using the official `rustup` package:
+BenchHub's desktop shell (`benchhub-desktop`) uses Tauri v2 (WebKit2GTK + Ayatana AppIndicator), and `benchhubd` uses standard archiving/download utilities for benchmark suites:
 
+- `libwebkit2gtk-4_1-0` (Ubuntu/Debian: `libwebkit2gtk-4.1-0`)
+- `libayatana-appindicator3-1`
+- `curl`, `tar`, `xz`, `unzip`
+
+**openSUSE Tumbleweed:**
 ```bash
-# 1. Update package lists and install rustup
-sudo apt update
-sudo apt install -y rustup
-
-# 2. Install and set the stable Rust compiler toolchain as default
-rustup install stable
-rustup default stable
+sudo zypper install -y libwebkit2gtk-4_1-0 libayatana-appindicator3-1 curl tar xz unzip
 ```
 
-*(Alternatively, you can install rustup via the official script: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`)*
-
-Verify your installation:
-```bash
-cargo --version
-rustc --version
-```
-
----
-
-## 2. System Dependencies
-
-BenchHub's requirements are categorized into three logical layers:
-
-### A. Build & Compilation Dependencies
-Required to compile the C redirection shim (`ssl_shim.c`), font engine bindings, and link the Rust binary:
-
-```bash
-sudo apt install -y \
-    build-essential \
-    pkg-config \
-    libfontconfig1-dev \
-    libxkbcommon-dev \
-    libsqlite3-dev
-```
-
-* **`build-essential`**: Provides GCC, G++, Make, and standard libc development headers.
-* **`pkg-config`**: Helper tool used by Cargo build scripts to locate system libraries.
-* **`libfontconfig1-dev`**: Font discovery library required by Slint and fontdb.
-* **`libxkbcommon-dev`**: Keyboard layout handling for Wayland and X11 window backends.
-* **`libsqlite3-dev`**: SQLite development headers for local database storage.
-
-### B. Runtime & GUI Dependencies
-Required by the Slint graphical user interface to render vector widgets and display clean typography:
-
-```bash
-sudo apt install -y \
-    fonts-dejavu-core \
-    libfontconfig1 \
-    libx11-6 \
-    libxcursor1 \
-    libxrandr2 \
-    libxi6 \
-    libwayland-client0 \
-    libwayland-cursor0 \
-    libwayland-egl1
-```
-
-* **`fonts-dejavu-core`**: High-quality TrueType font family ensuring crisp text and metric rendering across all UI screens.
-* **`libwayland-*` / `libx11-*`**: Native display server and pointer/keyboard event management libraries.
-
-### C. Benchmark Download & Runner Dependencies
-Required by BenchHub's execution engine when downloading and extracting benchmark test suites:
-
-```bash
-sudo apt install -y \
-    curl \
-    tar \
-    xz-utils \
-    unzip
-```
-
----
-
-## ⚡ All-In-One Installation Command
-
-On a clean Ubuntu system, you can install all build, runtime, and benchmark tools with a single command:
-
+**Ubuntu / Debian:**
 ```bash
 sudo apt update && sudo apt install -y \
-    rustup \
-    build-essential \
-    pkg-config \
-    libfontconfig1-dev \
-    libxkbcommon-dev \
-    libsqlite3-dev \
-    fonts-dejavu-core \
+    libwebkit2gtk-4.1-0 \
+    libayatana-appindicator3-1 \
     curl \
     tar \
     xz-utils \
     unzip
-
-rustup install stable
-rustup default stable
 ```
 
 ---
 
-## 3. Clone and Run
+## A. Prebuilt Release Package (`benchhub-linux-x86_64.tar.gz`)
+
+1. Download `benchhub-linux-x86_64.tar.gz` (and optionally `benchhub-linux-x86_64.tar.gz.sha256`) from [GitHub Releases](https://github.com/wamuufan/benchhub/releases).
+2. Extract the archive and run the installer:
 
 ```bash
-# 1. Clone the repository
+tar -xzf benchhub-linux-x86_64.tar.gz
+cd benchhub-linux-x86_64
+./install.sh
+```
+
+> On openSUSE Tumbleweed, `./install.sh` automatically checks and installs missing runtime dependencies via `zypper`.
+> On other Linux distributions, install the runtime dependencies from Section 1 first, then run:
+> ```bash
+> ./install.sh --skip-deps
+> ```
+
+---
+
+## B. Build from Source
+
+### 1. Build Dependencies
+
+**openSUSE Tumbleweed:**
+```bash
+sudo zypper install -y \
+    gcc gcc-c++ make pkg-config \
+    sqlite3-devel libopenssl-devel \
+    gtk3-devel webkit2gtk3-soup2-devel libayatana-appindicator3-devel librsvg-devel \
+    fontconfig-devel libxkbcommon-devel libX11-devel \
+    curl tar xz unzip
+```
+
+**Ubuntu / Debian:**
+```bash
+sudo apt update && sudo apt install -y \
+    build-essential pkg-config \
+    libsqlite3-dev libssl-dev \
+    libglib2.0-dev libgtk-3-dev libsoup-3.0-dev \
+    libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev \
+    libayatana-appindicator3-dev librsvg2-dev \
+    libfontconfig1-dev libxkbcommon-dev libx11-dev \
+    curl tar xz-utils unzip
+```
+
+**Rust Toolchain & Frontend Tools:**
+```bash
+rustup target add wasm32-unknown-unknown
+cargo install --locked trunk
+```
+
+### 2. Compilation
+
+```bash
 git clone https://github.com/wamuufan/benchhub.git
 cd benchhub
-
-# 2. Build and launch the optimized release binary
-./run.sh
+chmod +x scripts/build.sh
+./scripts/build.sh
 ```
 
-Or run directly with Cargo:
-```bash
-cargo run --release
-```
+This builds `benchhubd`, the Leptos WASM frontend, and `benchhub-desktop`, and packages `benchhub-linux-x86_64.tar.gz` and `benchhub-linux-x86_64.tar.gz.sha256` in the repository root.
 
-Or compile a standalone release binary:
+### 3. Extract and Install the Built Package
+
 ```bash
-cargo build --release
-./target/release/benchhub
+mkdir -p /tmp/benchhub-install
+tar -xzf benchhub-linux-x86_64.tar.gz -C /tmp/benchhub-install
+cd /tmp/benchhub-install/benchhub-linux-x86_64
+./install.sh
 ```
 
 ---
 
-## 4. Optional: Developer Fast Linking (Mold & Clang)
+## C. Building Distribution Packages (Flatpak & Snap)
 
-For developers who want 3-5x faster incremental linking times during iterative code changes:
+BenchHub also provides packaging scripts for Flatpak and Snap:
 
-```bash
-sudo apt install -y clang mold sccache
-```
-
-Then create a `.cargo/config.toml` in your local project root (this file is ignored by `.gitignore`):
-
-```toml
-[build]
-rustc-wrapper = "sccache"
-
-[target.x86_64-unknown-linux-gnu]
-linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
-```
-
----
-
-### D. openSUSE Tumbleweed Dependencies
-For users on openSUSE Tumbleweed, you can install the equivalent system dependencies using `zypper`:
-
-```bash
-sudo zypper install gcc make pkgconf openssl-devel fontconfig-devel libX11-devel libxcb-devel libxkbcommon-devel
-```
-
----
-
-## 6. Building Distribution Packages (Flatpak, Snap, Native Tarball)
-
-BenchHub provides automated scripts in the `scripts/` directory to generate distribution-ready packages.
-
-### Flatpak
-To build an offline Flatpak bundle (`.flatpak`), you need the Flatpak SDKs:
-
-```bash
-# 1. Install Flatpak Builder
-# Ubuntu: sudo apt install flatpak-builder
-# openSUSE: sudo zypper install flatpak-builder
-
-# 2. Add Flathub repository
-flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
-# 3. Install required Freedesktop SDKs and Rust toolchain
-flatpak install flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08
-
-# 4. Build the package
-./scripts/build-flatpak.sh
-```
-
-### Snap (via LXD)
-To build a strict Snap package, your system must have LXD initialized, and your user must have LXD group permissions:
-
-```bash
-# 1. Install Snapcraft and LXD
-sudo snap install snapcraft --classic
-sudo snap install lxd
-
-# 2. Initialize LXD (Accept defaults with Enter)
-sudo lxd init --auto
-
-# 3. Grant your user LXD permissions
-sudo usermod -aG lxd $USER
-# NOTE: You MUST restart your computer or log out and back in for the new group permissions to apply.
-
-# 4. Build the package
-./scripts/build-snap.sh
-```
-
-### Portable Native Tarball
-To generate a self-contained `.tar.gz` archive containing the binary and its dynamic library dependencies:
-
-```bash
-./scripts/build-native.sh
-```
-
----
-
-## 5. Troubleshooting
-
-
-### `error: linker 'clang' not found`
-* **Cause:** An old, machine-specific `.cargo/config.toml` may be present in your working tree.
-* **Solution:** Pull the latest repository changes (`git pull`). BenchHub uses the standard system `gcc` linker by default.
-
-### UI fonts or icons appear as missing boxes
-* **Solution:** Install the DejaVu font package:
+- **Flatpak (`benchhub-linux-x86_64.flatpak`):**
   ```bash
-  sudo apt install -y fonts-dejavu-core
+  ./scripts/build-flatpak.sh
+  ```
+- **Snap (`benchhub-linux-x86_64.snap` via LXD):**
+  ```bash
+  ./scripts/build-snap.sh
   ```
 
-### Window fails to open under Wayland
-* **Solution:** Fall back to the X11 compatibility layer:
+---
+
+## Launch & Uninstall
+
+- **Launch:** Open **BenchHub** from your desktop application menu, or run `benchhub` in your terminal (`~/.local/bin/benchhub`).
+- **Uninstall:**
   ```bash
-  WAYLAND_DISPLAY="" ./run.sh
+  ~/.local/bin/Benchhub/uninstall.sh
   ```
+  *(User benchmark history and downloaded runners in `~/.local/share/benchhub` are preserved unless removed manually.)*

@@ -1,8 +1,7 @@
 #!/bin/bash
 set -e
 
-# Proje ana dizinine geç
+# Navigate to project root directory
 cd "$(dirname "$0")" || exit 1
 
-# BenchHub'ı optimize release profilinde çalıştır
-exec cargo run --release "$@"
+exec bash scripts/run.sh "$@"
