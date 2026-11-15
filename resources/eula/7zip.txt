@@ -81,3 +81,7 @@ The license for original unRAR code has the following restriction:
   or as a part of other software is permitted, provided that it is clearly
   stated in the documentation and source comments that the code may
   not be used to develop a RAR (WinRAR) compatible archiver.
+
+[Official License References]
+- 7-Zip License Page : https://www.7-zip.org/license.txt
+- Full GNU LGPL v2.1 : https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html

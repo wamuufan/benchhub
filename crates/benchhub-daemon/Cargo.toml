@@ -1,0 +1,28 @@
+[package]
+name = "benchhub-daemon"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "benchhub_daemon"
+path = "src/lib.rs"
+
+[[bin]]
+name = "benchhubd"
+path = "src/main.rs"
+
+[dependencies]
+benchhub-types = { workspace = true }
+benchhub-core = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+dirs = { workspace = true }
+libc = { workspace = true }
+tracing = { workspace = true }
+toml = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

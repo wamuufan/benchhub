@@ -1,42 +1,73 @@
 # BenchHub
 
-BenchHub is an automation and UI tool for Linux that allows you to easily download, run, and analyze popular hardware benchmarking tools.
+BenchHub is a comprehensive Linux hardware benchmarking, stress testing, real-time telemetry, and result analysis suite designed for performance enthusiasts, hardware reviewers, and system engineers.
+
+## Architecture Overview
+
+BenchHub is built on a clean dual-binary architecture communicating over a local Unix domain socket:
+
+```
+┌────────────────────────────────────────────────────────┐
+│                   benchhub-desktop                     │
+│         Tauri v2 + Leptos 0.8 (CSR WASM) UI            │
+│  - Bilingual Localization (en / tr)                    │
+│  - Linux Desktop Theme Sync (KDE Breeze & Adwaita)    │
+└──────────────────────────┬─────────────────────────────┘
+                           │ Unix Domain Socket IPC
+┌──────────────────────────▼─────────────────────────────┐
+│                       benchhubd                        │
+│            Background Orchestrator Daemon              │
+│  - Benchmark Installation & Execution Lifecycle        │
+│  - Process-Group Management & Thermal Conditioning     │
+│  - Real-Time Telemetry (NVML, hwmon, RAPL, DRM)        │
+│  - SQLite Run History & CSV/PNG Report Exports         │
+└────────────────────────────────────────────────────────┘
+```
+
+- **`benchhubd` (`crates/benchhub-daemon` + `crates/benchhub-core`)**:
+  A lightweight, headless background orchestrator daemon. It manages benchmark profile definitions, tool downloads/installations, process-group lifecycles, thermal pre-conditioning routines, real-time multi-source telemetry sampling (`NVML`, `hwmon`, `RAPL`, `DRM`), SQLite benchmark run history, and report generation (CSV / PNG) over an authenticated local Unix domain socket.
+
+- **`benchhub-desktop` (`crates/benchhub-gui` + `src-tauri`)**:
+  A thin, responsive desktop application frontend powered by Tauri v2 and Leptos 0.8 (Client-Side Rendering via WebAssembly). It features full bilingual localization (`en` / `tr`), dynamic Linux desktop theme synchronization (KDE Plasma Breeze and GNOME/GTK Libadwaita palettes), real-time telemetry charts, queue management, and comparative history analysis.
 
 ## Legal & Licensing
 
-The BenchHub project is licensed under the **BSD 2-Clause License**. You are free to use, modify, and distribute the source code under these terms. (See the `LICENSE` file for details).
+BenchHub is licensed under the **BSD 2-Clause License**. You are free to use, modify, and distribute the source code under these terms. See the [LICENSE](LICENSE) file for the complete text.
 
-**HOWEVER, you must be aware of the following legal conditions and warnings regarding the use and distribution of this project:**
+### Third-Party Benchmarking Tools & EULAs
 
-### 1. Open Source Dependencies (GPLv3)
-BenchHub's graphical user interface (UI) is built using the open-source **Slint** framework. When used in open-source projects, Slint is subject to the **GPLv3** license.
-* Therefore, if you compile BenchHub from source and distribute it as an executable binary, the entire application (due to the Slint integration) **will be subject to the terms of the GPLv3 license.**
-* While your own source code remains under the BSD 2-Clause license, the distributed binary must comply with GPLv3 rules (such as providing source code to users). (Unless you own a commercial license for Slint).
+BenchHub automates the discovery, downloading, and execution of external benchmarking tools (such as Geekbench, Unigine Superposition/Heaven, Blender Benchmark, Y-Cruncher, 7-Zip, FurMark, and others).
 
-### 2. Third-Party Benchmarking Tools & EULAs
-BenchHub automates the downloading and execution of external, proprietary benchmarking tools such as *Geekbench, Unigine (Superposition, Heaven), Blender, and Y-Cruncher*.
-* **All of these software packages are governed by their own End User License Agreements (EULA).** BenchHub never automatically accepts these EULAs on your behalf. When installing a benchmark via the UI, it is entirely your responsibility to read and accept these terms.
-* For instance, running the free (Basic) versions of Unigine and Geekbench in a commercial or corporate environment in an **automated** manner may violate their respective EULAs. BenchHub is merely a "trigger" tool; the creators of BenchHub cannot be held liable for any commercial or personal EULA violations committed by the end-user.
+- **All third-party tools are governed by their respective End User License Agreements (EULA) and terms of service.** BenchHub never automatically accepts EULAs on your behalf; explicit user confirmation is required in the user interface prior to download or execution.
+- Automated or commercial execution of certain third-party benchmarks (e.g., free editions of commercial suites) may be subject to licensing restrictions. BenchHub is an execution orchestrator; users and organizations are solely responsible for ensuring compliance with all vendor licenses.
 
-### 3. Trademarks Disclaimer
-The names of third-party software, companies, and products mentioned in this software and its source code (e.g., Geekbench, Unigine, Blender, AMD, NVIDIA, etc.) are **registered trademarks of their respective owners.**
-* BenchHub is an independent tool. We have **no** official partnership, affiliation, or sponsorship with these companies.
-* The use of these names falls under "Nominative Fair Use" principles, strictly for the purpose of identifying the benchmarking tools.
+### Trademarks Disclaimer
 
-## Installation and Usage
+All product names, logos, brands, and registered trademarks mentioned within BenchHub and its documentation (e.g., Geekbench, Unigine, Blender, AMD, Intel, NVIDIA) are property of their respective owners. Their mention in BenchHub is solely for identification and compatibility purposes and constitutes **Nominative Fair Use**. BenchHub is an independent open-source project and is not affiliated with, endorsed by, or sponsored by any of these trademark holders.
 
-For complete system prerequisites, required packages, and detailed setup instructions on Ubuntu/Debian, please see the **[Installation Guide](INSTALLATION.md)**.
+## Quick Start
 
-### Quick Start
+For complete system prerequisites, prebuilt release installation, and Flatpak/Snap packaging instructions, please refer to the **[Installation Guide](INSTALLATION.md)**.
+
+### 1. Build and Package Release Archive
 
 ```bash
-./run.sh
+./scripts/build.sh
 ```
 
-Or build and run manually:
+This builds `benchhubd`, the Leptos WASM frontend, and `benchhub-desktop`, and produces `benchhub-linux-x86_64.tar.gz` (plus `.sha256`).
+
+### 2. Install Locally
 
 ```bash
-cargo build --release
-./target/release/benchhub
+mkdir -p /tmp/benchhub-install
+tar -xzf benchhub-linux-x86_64.tar.gz -C /tmp/benchhub-install
+cd /tmp/benchhub-install/benchhub-linux-x86_64
+./install.sh
 ```
 
+Or launch directly from the workspace during development:
+
+```bash
+./scripts/run.sh
+```

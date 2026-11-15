@@ -2,8 +2,9 @@ llama-bench (llama.cpp) Software License
 =========================================
 
 MIT License
-Copyright (c) 2023-2024 Georgi Gerganov and llama.cpp contributors.
-Repository: https://github.com/ggerganov/llama.cpp
+
+Copyright (c) 2023-2026 The ggml authors
+Repository: https://github.com/ggml-org/llama.cpp
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +24,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-NOTE ON MODEL WEIGHTS:
-Large language model weights executed with llama-bench (such as GGUF quantized models)
-may be subject to their respective original model creator licenses (e.g. Meta LLaMA,
-Mistral, Stories, Apache 2.0). Users must ensure compliance with third-party model terms.
+NOTE ON BENCHMARK TEST MODELS:
+BenchHub's default presets download `stories260K.gguf` / `stories15M.gguf` from
+the `tinyllamas` checkpoints (`karpathy/llama2.c`, MIT License) mirrored on
+Hugging Face (`ggml-org/models`). If you run other custom GGUF model weights
+via custom arguments, those weights remain subject to their respective creator
+licenses (e.g., Llama Community License, Apache 2.0, Mistral).

@@ -35,3 +35,11 @@ License:
  4. Use of this program or creation of derived works based on this
     program constitutes acceptance of these licensing restrictions.
  5. Absolutely no warranty is expressed or implied.
+
+[BenchHub Preset & Run Rules Notice]
+- Official STREAM Run Rules: http://www.cs.virginia.edu/stream/ref.html
+- BenchHub compiles `stream.c` with OpenMP (`-O3 -fopenmp -DNTIMES=10`) and
+  different `STREAM_ARRAY_SIZE` presets (Compact: 20M, Standard: 80M,
+  Extended: 160M). Ensure your chosen array size exceeds 4x last-level cache
+  before publishing "STREAM benchmark results" (Clause 3a), or label results
+  under Clause 3b (e.g. "tuned STREAM benchmark results").

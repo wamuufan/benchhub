@@ -1,9 +1,7 @@
 app-id: org.benchhub.BenchHub
-runtime: org.freedesktop.Sdk
-runtime-version: '25.08'
-sdk: org.freedesktop.Sdk
-sdk-extensions:
-  - org.freedesktop.Sdk.Extension.rust-stable
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
 command: benchhub
 
 finish-args:
@@ -21,11 +19,6 @@ finish-args:
   - --filesystem=xdg-run/dconf
   - --talk-name=ca.desrt.dconf
   - --env=DCONF_USER_CONFIG_DIR=.config/dconf
-
-build-options:
-  append-path: /usr/lib/sdk/rust-stable/bin
-  env:
-    CARGO_HOME: /run/build/benchhub/cargo
 
 modules:
   - name: fio
@@ -53,10 +46,9 @@ modules:
   - name: benchhub
     buildsystem: simple
     build-commands:
-      - cargo build --release
-      - install -Dm755 target/release/benchhub /app/bin/benchhub
+      - install -Dm755 target/release/benchhubd /app/bin/benchhubd
+      - install -Dm755 target/release/benchhub-desktop /app/bin/benchhub
       - cp -r benchmarks /app/bin/benchmarks
     sources:
       - type: dir
         path: ../../
-      - cargo-sources.json

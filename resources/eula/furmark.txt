@@ -1,0 +1,46 @@
+FurMark 2
+GPU Stress Test and OpenGL / Vulkan Benchmark
+Copyright (C) 2007-2025 Geeks3D, All rights reserved.
+https://geeks3d.com/furmark/
+
+****************************************************************
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE 
+USE OR OTHER DEALINGS IN THE SOFTWARE.
+****************************************************************
+
+Permission is granted to anyone to use this software for 
+any purpose, excluding commercial applications, subject to 
+the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must 
+   not claim that you wrote the original software.
+
+2. This software is a freeware, it cannot be sold or rented.
+
+3. - Websites: you can copy it and distribute it freely as long as
+     you put a backlink to FurMark homepage:
+     https://www.geeks3d.com/furmark/
+   - For other kind of uses, please contact the author 
+     at jegx@geeks3d.com
+
+4. This notice may not be removed or altered from any distribution.
+
+----------------- Geeks3D PRO Pack ---------------------
+To use FurMark 2 in a commercial context, visit this page:
+https://www.geeks3d.com/g3dpp/
+or send an email at jegx@geeks3d.com (add [Geeks3D PRO Pack] 
+to the subject).
+
+[BenchHub Additional Notes]
+- Per Geeks3D's distribution terms, including FurMark in hardware/software
+  bundles (CD-ROMs, preloaded vendor media, etc.) requires prior permission
+  from Geeks3D.
+- On Linux systems where `libGLU.so.1` is absent, BenchHub may fetch Ubuntu's
+  `libglu1-mesa` shared library (SGI Free Software License B v2.0) solely into
+  the local FurMark runner directory.
