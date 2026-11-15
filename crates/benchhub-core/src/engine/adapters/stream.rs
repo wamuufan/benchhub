@@ -30,6 +30,15 @@ pub fn stream_array_size_for_dir(runner_dir: &Path) -> &'static str {
     }
 }
 
+/// Returns the Flatpak prebuilt STREAM binary path matching the version directory name.
+pub fn flatpak_prebuilt_stream_for_dir(runner_dir: &Path) -> &'static str {
+    match stream_array_size_for_dir(runner_dir) {
+        "20000000" => "/app/bin/stream-compact",
+        "160000000" => "/app/bin/stream-extended",
+        _ => "/app/bin/stream-standard",
+    }
+}
+
 /// Ensures `stream` exists and links cleanly in `runner_dir`, recompiling `stream.c` with OpenMP if needed.
 pub async fn ensure_stream_runner(runner_dir: &Path) -> Result<()> {
     if !tokio::fs::try_exists(runner_dir).await.unwrap_or(false) {
@@ -63,6 +72,7 @@ pub async fn ensure_stream_runner(runner_dir: &Path) -> Result<()> {
             &[
                 "-O3",
                 "-fopenmp",
+                "-mcmodel=medium",
                 &array_size_flag,
                 "-DNTIMES=10",
                 "stream.c",
@@ -71,6 +81,22 @@ pub async fn ensure_stream_runner(runner_dir: &Path) -> Result<()> {
             ],
         )
         .await;
+
+        if !tokio::fs::try_exists(&bin_path).await.unwrap_or(false)
+            || is_dynamically_broken(&bin_path)
+        {
+            let prebuilt = Path::new(flatpak_prebuilt_stream_for_dir(runner_dir));
+            if prebuilt.is_file() {
+                tokio::fs::copy(prebuilt, &bin_path).await?;
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let mut perms = tokio::fs::metadata(&bin_path).await?.permissions();
+                    perms.set_mode(0o755);
+                    tokio::fs::set_permissions(&bin_path, perms).await?;
+                }
+            }
+        }
     }
     Ok(())
 }

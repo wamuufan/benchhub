@@ -87,11 +87,7 @@ jobs:
       - name: Build Flatpak bundle
         run: |
           sudo apt-get install -y flatpak flatpak-builder
-          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          flatpak-builder --user --install-deps-from=flathub --repo=repo --force-clean build-dir packaging/flatpak/org.benchhub.BenchHub.yml
-          flatpak build-bundle repo benchhub-linux-x86_64.flatpak org.benchhub.BenchHub
-          sha256sum benchhub-linux-x86_64.flatpak > benchhub-linux-x86_64.flatpak.sha256
-          rm -rf build-dir repo
+          bash scripts/build-flatpak.sh
 
       - name: Build Snap package
         run: |

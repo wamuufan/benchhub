@@ -3,7 +3,7 @@ name = "C-Ray Raytracing"
 category = "Render"
 download_size = "~10 KB"
 description = "Multi-threaded raytracing rendering benchmark written in pure C."
-download_cmd = "wget --progress=bar:force:noscroll -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='x86*' -xzf c-ray-1.1.tar.gz --strip-components=1 && rm -f c-ray-1.1.tar.gz && gcc -O3 -pthread c-ray-mt.c -lm -o c-ray"
+download_cmd = "wget --progress=bar:force:noscroll -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='x86*' -xzf c-ray-1.1.tar.gz --strip-components=1 && rm -f c-ray-1.1.tar.gz && (if command -v gcc >/dev/null 2>&1; then gcc -O3 -pthread c-ray-mt.c -lm -o c-ray; elif [ -x /app/bin/c-ray ]; then cp -f /app/bin/c-ray ./c-ray && chmod +x ./c-ray; else exit 127; fi)"
 run_cmd = "./c-ray"
 run_args = ["-i", "sphfract", "-s", "1920x1080", "-r", "8", "-o", "/dev/null"]
 score_regex = "Rendering took:.*?\\((\\d+)\\s+milliseconds\\)"
@@ -13,7 +13,7 @@ default_version = "1080p"
 [[versions]]
 version = "1080p"
 download_size = "~10 KB"
-download_cmd = "wget --progress=bar:force:noscroll -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='x86*' -xzf c-ray-1.1.tar.gz --strip-components=1 && rm -f c-ray-1.1.tar.gz && gcc -O3 -pthread c-ray-mt.c -lm -o c-ray"
+download_cmd = "wget --progress=bar:force:noscroll -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='x86*' -xzf c-ray-1.1.tar.gz --strip-components=1 && rm -f c-ray-1.1.tar.gz && (if command -v gcc >/dev/null 2>&1; then gcc -O3 -pthread c-ray-mt.c -lm -o c-ray; elif [ -x /app/bin/c-ray ]; then cp -f /app/bin/c-ray ./c-ray && chmod +x ./c-ray; else exit 127; fi)"
 run_cmd = "./c-ray"
 run_args = ["-i", "sphfract", "-s", "1920x1080", "-r", "8", "-o", "/dev/null"]
 score_regex = "Rendering took:.*?\\((\\d+)\\s+milliseconds\\)"
@@ -22,7 +22,7 @@ score_unit = "ms (lower is better)"
 [[versions]]
 version = "4K"
 download_size = "~10 KB"
-download_cmd = "wget --progress=bar:force:noscroll -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='x86*' -xzf c-ray-1.1.tar.gz --strip-components=1 && rm -f c-ray-1.1.tar.gz && gcc -O3 -pthread c-ray-mt.c -lm -o c-ray"
+download_cmd = "wget --progress=bar:force:noscroll -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='x86*' -xzf c-ray-1.1.tar.gz --strip-components=1 && rm -f c-ray-1.1.tar.gz && (if command -v gcc >/dev/null 2>&1; then gcc -O3 -pthread c-ray-mt.c -lm -o c-ray; elif [ -x /app/bin/c-ray ]; then cp -f /app/bin/c-ray ./c-ray && chmod +x ./c-ray; else exit 127; fi)"
 run_cmd = "./c-ray"
 run_args = ["-i", "sphfract", "-s", "3840x2160", "-r", "16", "-o", "/dev/null"]
 score_regex = "Rendering took:.*?\\((\\d+)\\s+milliseconds\\)"
@@ -31,7 +31,7 @@ score_unit = "ms (lower is better)"
 [[versions]]
 version = "720p"
 download_size = "~10 KB"
-download_cmd = "wget --progress=bar:force:noscroll -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='x86*' -xzf c-ray-1.1.tar.gz --strip-components=1 && rm -f c-ray-1.1.tar.gz && gcc -O3 -pthread c-ray-mt.c -lm -o c-ray"
+download_cmd = "wget --progress=bar:force:noscroll -c https://github.com/jtsiomb/c-ray/releases/download/c-ray-1.1/c-ray-1.1.tar.gz && tar --no-same-owner --no-same-permissions --no-xattrs --no-acls --exclude='x86*' -xzf c-ray-1.1.tar.gz --strip-components=1 && rm -f c-ray-1.1.tar.gz && (if command -v gcc >/dev/null 2>&1; then gcc -O3 -pthread c-ray-mt.c -lm -o c-ray; elif [ -x /app/bin/c-ray ]; then cp -f /app/bin/c-ray ./c-ray && chmod +x ./c-ray; else exit 127; fi)"
 run_cmd = "./c-ray"
 run_args = ["-i", "sphfract", "-s", "1280x720", "-r", "8", "-o", "/dev/null"]
 score_regex = "Rendering took:.*?\\((\\d+)\\s+milliseconds\\)"

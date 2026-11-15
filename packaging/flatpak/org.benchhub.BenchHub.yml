@@ -48,6 +48,13 @@ modules:
     build-commands:
       - install -Dm755 target/release/benchhubd /app/bin/benchhubd
       - install -Dm755 target/release/benchhub-desktop /app/bin/benchhub
+      - install -Dm755 target/flatpak-prebuilt/c-ray /app/bin/c-ray
+      - install -Dm644 target/flatpak-prebuilt/sphfract /app/share/benchhub/c-ray/sphfract
+      - install -Dm755 target/flatpak-prebuilt/stream-standard /app/bin/stream-standard
+      - install -Dm755 target/flatpak-prebuilt/stream-compact /app/bin/stream-compact
+      - install -Dm755 target/flatpak-prebuilt/stream-extended /app/bin/stream-extended
+      - install -Dm755 target/flatpak-prebuilt/libGLU.so.1 /app/lib/libGLU.so.1
+      - cp -a /usr/lib/x86_64-linux-gnu/libgomp.so.1* /app/lib/ 2>/dev/null || true
       - cp -r benchmarks /app/bin/benchmarks
     sources:
       - type: dir

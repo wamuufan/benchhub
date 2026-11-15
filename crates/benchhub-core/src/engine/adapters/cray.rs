@@ -47,6 +47,20 @@ pub async fn ensure_cray_runner(runner_dir: &Path) -> Result<()> {
             &["-O3", "-pthread", "c-ray-mt.c", "-lm", "-o", "c-ray"],
         )
         .await;
+
+        if !tokio::fs::try_exists(&bin_path).await.unwrap_or(false) {
+            let prebuilt = Path::new("/app/bin/c-ray");
+            if prebuilt.is_file() {
+                tokio::fs::copy(prebuilt, &bin_path).await?;
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let mut perms = tokio::fs::metadata(&bin_path).await?.permissions();
+                    perms.set_mode(0o755);
+                    tokio::fs::set_permissions(&bin_path, perms).await?;
+                }
+            }
+        }
     }
     Ok(())
 }
