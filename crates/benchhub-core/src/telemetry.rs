@@ -382,12 +382,17 @@ impl SensorCache {
     pub fn discover(&mut self) {
         let mut primary_cpu_temps = Vec::new();
         let mut fallback_cpu_temps = Vec::new();
+        let has_rapl = find_rapl_energy_path().is_some();
+        let mut saw_intel_cpu = false;
 
         for p in sorted_dir_paths(Path::new("/sys/class/hwmon")) {
             let name = fs::read_to_string(p.join("name"))
                 .unwrap_or_default()
                 .trim()
                 .to_lowercase();
+            if name.contains("coretemp") {
+                saw_intel_cpu = true;
+            }
             let is_primary_cpu =
                 name.contains("k10temp") || name.contains("coretemp") || name.contains("zenpower");
             let is_cpu = is_primary_cpu || name.contains("cpu") || name.contains("soc_thermal");
@@ -436,7 +441,12 @@ impl SensorCache {
                 if is_cpu {
                     self.cpu_power_paths.push(path);
                 } else if is_apu {
-                    self.apu_power_paths.push(path);
+                    let has_fan_control = p.join("fan1_input").exists() || p.join("pwm1").exists();
+                    if has_fan_control || has_rapl || saw_intel_cpu {
+                        self.gpu_power_paths.push(path);
+                    } else {
+                        self.apu_power_paths.push(path);
+                    }
                 } else if is_discrete_gpu {
                     self.gpu_power_paths.push(path);
                 }
@@ -446,9 +456,18 @@ impl SensorCache {
         self.cpu_temp_paths.extend(primary_cpu_temps);
         self.cpu_temp_paths.extend(fallback_cpu_temps);
 
-        // On AMD platforms (Ryzen APUs like 7840HS), amdgpu power is the APU Package Power (CPU+SoC)
-        // If no dedicated CPU power path was found (e.g. k10temp has no power file), assign APU power to CPU
-        if self.cpu_power_paths.is_empty() && !self.apu_power_paths.is_empty() {
+        // Ensure AMD GPUs always expose gpu_power_w when no other discrete GPU hwmon power path exists
+        if self.gpu_power_paths.is_empty() && !self.apu_power_paths.is_empty() {
+            self.gpu_power_paths.extend(self.apu_power_paths.clone());
+        }
+
+        // On AMD APU platforms (e.g. Ryzen 7840HS) without RAPL or Intel CPU sensors,
+        // amdgpu power represents APU package power (CPU+SoC) when no dedicated CPU power path exists
+        if self.cpu_power_paths.is_empty()
+            && !self.apu_power_paths.is_empty()
+            && !has_rapl
+            && !saw_intel_cpu
+        {
             self.cpu_power_paths.extend(self.apu_power_paths.clone());
         }
 
@@ -922,8 +941,27 @@ impl TelemetryEngine {
                         (self.last_energy_uj, self.last_energy_time)
                     {
                         let elapsed = now.duration_since(last_time).as_secs_f32();
-                        if elapsed > 0.001 && current_uj >= last_uj {
-                            calculate_power_watts(current_uj - last_uj, elapsed)
+                        if elapsed > 0.001 {
+                            if current_uj >= last_uj {
+                                calculate_power_watts(current_uj - last_uj, elapsed)
+                            } else {
+                                let max_range = path
+                                    .parent()
+                                    .map(|p| p.join("max_energy_range_uj"))
+                                    .and_then(|p| fs::read_to_string(p).ok())
+                                    .and_then(|s| s.trim().parse::<u64>().ok());
+                                if let Some(max_range) = max_range {
+                                    if max_range > last_uj {
+                                        let delta_uj =
+                                            (max_range - last_uj).saturating_add(current_uj);
+                                        calculate_power_watts(delta_uj, elapsed)
+                                    } else {
+                                        0.0
+                                    }
+                                } else {
+                                    0.0
+                                }
+                            }
                         } else {
                             0.0
                         }
@@ -933,7 +971,7 @@ impl TelemetryEngine {
 
                     self.last_energy_uj = Some(current_uj);
                     self.last_energy_time = Some(now);
-                    if power > 0.0 && power < 500.0 {
+                    if power.is_finite() && (0.0..5000.0).contains(&power) {
                         return Some(power);
                     }
                 }

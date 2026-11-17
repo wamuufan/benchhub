@@ -17,7 +17,8 @@ impl Db {
         let conn = Connection::open(&db_path)
             .with_context(|| format!("Failed to open SQLite database at {:?}", db_path))?;
         conn.execute_batch(
-            "PRAGMA journal_mode = WAL;
+            "PRAGMA foreign_keys = ON;
+             PRAGMA journal_mode = WAL;
              PRAGMA synchronous = NORMAL;
              CREATE TABLE IF NOT EXISTS runs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -194,8 +195,7 @@ impl Db {
         Self::migrate_missing_columns(conn, "telemetry_points", telemetry_migrations)
     }
 
-    pub fn insert_run(&self, run: &RunResult) -> Result<i64> {
-        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+    fn insert_run_with_conn(conn: &Connection, run: &RunResult) -> Result<i64> {
         conn.execute(
             "INSERT INTO runs (
                 benchmark_id, category, preset_or_version, gpu_mode, score, status,
@@ -255,6 +255,11 @@ impl Db {
         )
         .context("Failed to insert run into database")?;
         Ok(conn.last_insert_rowid())
+    }
+
+    pub fn insert_run(&self, run: &RunResult) -> Result<i64> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        Self::insert_run_with_conn(&conn, run)
     }
 
     pub fn update_run(&self, run: &RunResult) -> Result<()> {
@@ -385,15 +390,20 @@ impl Db {
         methodology_run: &RunResult,
         child_ids: &[i64],
     ) -> Result<i64> {
-        let id = self.insert_run(methodology_run)?;
-        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
-        for child_id in child_ids {
-            conn.execute(
-                "UPDATE runs SET methodology_parent_id = ?1 WHERE id = ?2",
-                params![id, child_id],
-            )
-            .context("Failed to update methodology_parent_id for child")?;
+        let mut conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let tx = conn.transaction().context("Failed to start transaction")?;
+        let id = Self::insert_run_with_conn(&tx, methodology_run)?;
+        {
+            let mut stmt = tx
+                .prepare("UPDATE runs SET methodology_parent_id = ?1 WHERE id = ?2")
+                .context("Failed to prepare methodology child update")?;
+            for child_id in child_ids {
+                stmt.execute(params![id, child_id])
+                    .context("Failed to update methodology_parent_id for child")?;
+            }
         }
+        tx.commit()
+            .context("Failed to commit methodology record transaction")?;
         Ok(id)
     }
 
@@ -506,6 +516,38 @@ impl Db {
         status: &str,
         sort_order: HistorySortOrder,
     ) -> Result<Vec<RunResult>> {
+        self.get_filtered_history_with_limit(
+            search,
+            category,
+            gpu_mode,
+            status,
+            sort_order,
+            Some(300),
+        )
+    }
+
+    /// Returns all run records ordered by timestamp descending without the UI row limit,
+    /// intended for complete CSV history exports.
+    pub fn get_all_history_for_export(&self) -> Result<Vec<RunResult>> {
+        self.get_filtered_history_with_limit(
+            "",
+            "all",
+            "all",
+            "all",
+            HistorySortOrder::DateDesc,
+            None,
+        )
+    }
+
+    pub fn get_filtered_history_with_limit(
+        &self,
+        search: &str,
+        category: &str,
+        gpu_mode: &str,
+        status: &str,
+        sort_order: HistorySortOrder,
+        limit: Option<usize>,
+    ) -> Result<Vec<RunResult>> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
 
         let mut query = format!("SELECT {} FROM runs WHERE 1=1", RUNS_SELECT_COLUMNS);
@@ -588,10 +630,10 @@ impl Db {
             }
         }
 
-        query.push_str(&format!(
-            " ORDER BY {} LIMIT 300",
-            sort_order.to_sql_order_clause()
-        ));
+        query.push_str(&format!(" ORDER BY {}", sort_order.to_sql_order_clause()));
+        if let Some(max_rows) = limit {
+            query.push_str(&format!(" LIMIT {}", max_rows));
+        }
 
         let mut stmt = conn.prepare(&query)?;
         let params_slice: Vec<&dyn rusqlite::ToSql> =
@@ -607,11 +649,14 @@ impl Db {
     }
 
     pub fn clear_history(&self) -> Result<()> {
-        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
-        conn.execute("DELETE FROM telemetry_points", [])
+        let mut conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let tx = conn.transaction().context("Failed to start transaction")?;
+        tx.execute("DELETE FROM telemetry_points", [])
             .context("Failed to clear telemetry_points table")?;
-        conn.execute("DELETE FROM runs", [])
+        tx.execute("DELETE FROM runs", [])
             .context("Failed to clear runs table")?;
+        tx.commit()
+            .context("Failed to commit clear_history transaction")?;
         Ok(())
     }
 

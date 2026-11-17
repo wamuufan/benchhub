@@ -240,7 +240,7 @@ pub fn EulaModal(
                                     disabled=move || cancelling.get()
                                     on:click=on_stop_install
                                 >
-                                    {t(l, "stop_task")}
+                                    {t(l, "cancel_active")}
                                 </button>
                             }.into_any(),
                             InstallPhase::Finished { .. } => view! {

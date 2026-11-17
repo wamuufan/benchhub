@@ -81,10 +81,8 @@ if [[ "${SKIP_DEPS}" -eq 0 ]]; then
             echo "[INFO] All required runtime dependencies are already installed."
         fi
     else
-        echo "[INFO] Non-openSUSE Tumbleweed distribution detected."
-        echo "[INFO] Please ensure the runtime dependencies listed in INSTALLATION.md are installed,"
-        echo "[INFO] then re-run this installer with: ./install.sh --skip-deps"
-        exit 1
+        echo "[WARN] Automatic system dependency installation is only preconfigured for openSUSE Tumbleweed; continuing with binary installation..."
+        echo "[INFO] Please ensure the runtime dependencies listed in INSTALLATION.md are installed."
     fi
 fi
 
@@ -107,7 +105,7 @@ cat > "${APP_DIR}/benchhub.desktop" <<EOF
 Type=Application
 Name=BenchHub
 Comment=Linux Hardware Benchmark & Telemetry Suite
-Exec=${INSTALL_DIR}/benchhub-launch.sh
+Exec="${INSTALL_DIR}/benchhub-launch.sh"
 Icon=utilities-system-monitor
 Terminal=false
 Categories=System;Monitor;Utility;

@@ -5,6 +5,9 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Maximum allowed size in bytes for a single newline-delimited IPC frame.
+pub const MAX_IPC_FRAME_BYTES: usize = 16 * 1024 * 1024;
+
 /// Queued benchmark or stress task managed by the daemon execution queue.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct QueueItem {
@@ -90,6 +93,7 @@ pub enum DaemonNotification {
 
 /// Full daemon runtime snapshot synchronized to newly attached clients and on state transitions.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct DaemonStateSnapshot {
     pub installed_map: HashMap<String, bool>,
     pub installed_versions_map: HashMap<String, bool>,

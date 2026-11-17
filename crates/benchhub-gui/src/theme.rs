@@ -2,7 +2,7 @@
 //!
 //! Synchronizes KDE Plasma (Breeze) and GNOME/GTK (Libadwaita) color schemes
 //! with the Leptos CSR frontend, persists overrides cleanly through `benchhubd`
-//! (`AppSettings.theme`), and performs live 600ms + focus polling.
+//! (`AppSettings.theme`), and performs live 2500ms + focus polling.
 
 use crate::tauri_bridge;
 use benchhub_types::{SystemThemeInfo, ThemeSettings};
@@ -112,9 +112,15 @@ impl ThemeState {
         settings
     }
 
-    /// Starts live theme polling loop (600ms) and window focus trigger.
+    /// Starts live theme polling loop (2500ms) and window focus trigger when system mode is active.
     pub fn start_sync(&self) {
         let sys_info = self.sys_theme_info;
+        let theme_mode = self.theme_mode;
+        let custom_enabled = self.custom_theme_enabled;
+        let is_system_active = move || {
+            let mode = theme_mode.get_untracked();
+            (mode == "system" || mode == "auto") && !custom_enabled.get_untracked()
+        };
 
         // Immediate fetch on mount
         leptos::task::spawn_local(async move {
@@ -123,10 +129,13 @@ impl ThemeState {
             }
         });
 
-        // 600ms polling loop
+        // 2500ms polling loop (only when system theme synchronization is active)
         leptos::task::spawn_local(async move {
             loop {
-                sleep_ms(600).await;
+                sleep_ms(2500).await;
+                if !is_system_active() {
+                    continue;
+                }
                 if let Ok(fresh) = tauri_bridge::get_system_theme_info().await {
                     if sys_info.get_untracked() != fresh {
                         sys_info.set(fresh);
@@ -138,6 +147,9 @@ impl ThemeState {
         // Window focus event listener
         if let Some(win) = web_sys::window() {
             let cb = wasm_bindgen::closure::Closure::<dyn Fn()>::new(move || {
+                if !is_system_active() {
+                    return;
+                }
                 leptos::task::spawn_local(async move {
                     if let Ok(fresh) = tauri_bridge::get_system_theme_info().await {
                         if sys_info.get_untracked() != fresh {

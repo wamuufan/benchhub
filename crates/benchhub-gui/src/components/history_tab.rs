@@ -123,7 +123,11 @@ pub fn HistoryTab(
     let status_filter = RwSignal::new("all".to_string());
     let sort_order = RwSignal::new(HistorySortOrder::DateDesc);
 
+    let fetch_seq = RwSignal::new(0u64);
+
     let fetch_history = move || {
+        let seq = fetch_seq.get_untracked().wrapping_add(1);
+        fetch_seq.set(seq);
         let s = search_query.get_untracked();
         let cat = category_filter.get_untracked();
         let gpu = gpu_mode_filter.get_untracked();
@@ -133,10 +137,16 @@ pub fn HistoryTab(
         leptos::task::spawn_local(async move {
             match tauri_bridge::get_history(&s, &cat, &gpu, &st, sort).await {
                 Ok(list) => {
-                    selected_ids.update(|set| retain_existing_selected_ids(set, &list));
-                    runs.set(list);
+                    if fetch_seq.get_untracked() == seq {
+                        selected_ids.update(|set| retain_existing_selected_ids(set, &list));
+                        runs.set(list);
+                    }
                 }
-                Err(err) => status_toast.set(Some((err, true))),
+                Err(err) => {
+                    if fetch_seq.get_untracked() == seq {
+                        status_toast.set(Some((err, true)));
+                    }
+                }
             }
         });
     };
@@ -196,10 +206,11 @@ pub fn HistoryTab(
     });
 
     let on_create_methodology = move |_| {
-        let ids: Vec<i64> = selected_ids.get_untracked().into_iter().collect();
+        let mut ids: Vec<i64> = selected_ids.get_untracked().into_iter().collect();
         if ids.len() < 2 {
             return;
         }
+        ids.sort_unstable();
 
         leptos::task::spawn_local(async move {
             match tauri_bridge::create_methodology(&ids).await {
@@ -235,8 +246,9 @@ pub fn HistoryTab(
     };
 
     let on_export_png = move |_| {
-        let ids: Vec<i64> = selected_ids.get_untracked().into_iter().collect();
+        let mut ids: Vec<i64> = selected_ids.get_untracked().into_iter().collect();
         if !ids.is_empty() {
+            ids.sort_unstable();
             spawn_toast_listener(status_toast, async move {
                 tauri_bridge::export_comparison_png(&ids).await
             });

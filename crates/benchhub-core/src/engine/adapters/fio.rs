@@ -162,12 +162,31 @@ pub async fn ensure_fio_runner(runner_dir: &Path) -> Result<()> {
                     cmd.env("PATH", format!("/bin:/usr/bin:{}", cur_path));
                 }
             }
-            cmd.env("LC_ALL", "C")
+            cmd.process_group(0)
+                .stdin(std::process::Stdio::null())
+                .env("LC_ALL", "C")
                 .arg("-c")
                 .arg(rebuild_cmd)
                 .current_dir(runner_dir);
             inject_ssl_env(&mut cmd).await;
-            let _ = cmd.status().await;
+            if let Ok(mut child) = cmd.spawn() {
+                let child_pid = child.id();
+                match tokio::time::timeout(std::time::Duration::from_secs(180), child.wait()).await
+                {
+                    Ok(Ok(_)) => {}
+                    Ok(Err(err)) => {
+                        tracing::warn!("Failed waiting for fio rebuild: {}", err);
+                    }
+                    Err(_) => {
+                        tracing::warn!("FIO rebuild timed out after 180s; killing process group");
+                        if let Some(pid) = child_pid {
+                            crate::engine::platform_env::kill_process_group(pid);
+                        }
+                        let _ = child.kill().await;
+                        let _ = child.wait().await;
+                    }
+                }
+            }
         }
     }
     Ok(())

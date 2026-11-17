@@ -51,6 +51,7 @@ parts:
       - linux-libc-dev
       - libgomp1
       - fio
+      - 7zip
     override-prime: |
       craftctl default
       # Remove any staged tar to ensure the base core24 /bin/tar is always used

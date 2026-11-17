@@ -120,10 +120,16 @@ pub async fn open_external_url(url: String) -> Result<(), String> {
     {
         return Err("Refusing to open invalid or non-HTTP(S) URL".to_string());
     }
-    std::process::Command::new("xdg-open")
+    let mut child = std::process::Command::new("xdg-open")
         .arg(trimmed)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .spawn()
         .map_err(|e| format!("Failed to launch browser: {}", e))?;
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
     Ok(())
 }
 

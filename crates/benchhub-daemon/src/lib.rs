@@ -16,8 +16,8 @@ use benchhub_core::{
 use benchhub_types::{
     normalize_run_status, validate_custom_arg, ActiveTaskInfo, AppSettings, BenchmarkProfile,
     DaemonEvent, DaemonInfo, DaemonNotification, DaemonPayload, DaemonRequest, DaemonResponse,
-    DaemonStateSnapshot, GpuMode, HistorySortOrder, QueueItem, RunBenchmarkParams,
-    RunComparisonDiff, RunOutcome, RunResult, TelemetryData,
+    DaemonStateSnapshot, GpuMode, QueueItem, RunBenchmarkParams, RunComparisonDiff, RunOutcome,
+    RunResult, TelemetryData, MAX_IPC_FRAME_BYTES,
 };
 use chrono::Utc;
 use std::collections::HashMap;
@@ -602,6 +602,18 @@ impl DaemonRuntime {
                 Ok(DaemonPayload::Unit)
             }
             DaemonRequest::UninstallBenchmark { id, version } => {
+                {
+                    let active = self.active_task.lock().await;
+                    if active.is_some() || self.is_queue_running.load(Ordering::SeqCst) {
+                        return Err(
+                            "Cannot uninstall while a benchmark or queue is running".to_string()
+                        );
+                    }
+                    let mut q = self.queue.lock().await;
+                    q.retain(|item| {
+                        !(item.id == id && (version.is_empty() || item.version == version))
+                    });
+                }
                 let service = self.current_service().await;
                 if let Err(err) = service.uninstall(&id, &version).await {
                     let msg = err.to_string();
@@ -829,7 +841,8 @@ impl DaemonRuntime {
             DaemonRequest::ExportHistoryCsv => {
                 let service = self.current_service().await;
                 let runs = service
-                    .get_history("", "all", "all", "all", HistorySortOrder::DateDesc)
+                    .db
+                    .get_all_history_for_export()
                     .map_err(|e| e.to_string())?;
                 let exports_dir = self.data_dir.join("exports");
                 std::fs::create_dir_all(&exports_dir).map_err(|e| e.to_string())?;
@@ -1061,14 +1074,17 @@ impl DaemonRuntime {
             }
             q.len()
         };
-        if self.active_task.lock().await.is_some()
-            || self
-                .is_queue_running
-                .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-                .is_err()
         {
-            self.emit_notification(DaemonNotification::AlreadyRunning);
-            return Err("A task or queue is already running".to_string());
+            let active = self.active_task.lock().await;
+            if active.is_some()
+                || self
+                    .is_queue_running
+                    .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+                    .is_err()
+            {
+                self.emit_notification(DaemonNotification::AlreadyRunning);
+                return Err("A task or queue is already running".to_string());
+            }
         }
 
         self.clear_terminal_logs_sync().await;
@@ -1620,6 +1636,16 @@ pub async fn serve_unix_socket(
                 accept_res = listener.accept() => {
                     match accept_res {
                         Ok((stream, _addr)) => {
+                            #[cfg(unix)]
+                            if let Ok(cred) = stream.peer_cred() {
+                                if cred.uid() != unsafe { libc::geteuid() } {
+                                    tracing::warn!(
+                                        "Rejected IPC connection from unauthorized UID {}",
+                                        cred.uid()
+                                    );
+                                    continue;
+                                }
+                            }
                             let rt = Arc::clone(&runtime);
                             tokio::spawn(async move {
                                 if let Err(err) = handle_client_connection(rt, stream).await {
@@ -1717,14 +1743,76 @@ pub fn is_process_alive(pid: i32) -> bool {
     }
 }
 
+/// Reads a single newline-terminated UTF-8 frame bounded by `max_bytes`.
+/// Cancel-safe when used inside `tokio::select!` because `buf` retains partial bytes across polls.
+async fn read_bounded_line<R: tokio::io::AsyncBufRead + Unpin>(
+    reader: &mut R,
+    buf: &mut Vec<u8>,
+    out: &mut String,
+    max_bytes: usize,
+) -> std::io::Result<usize> {
+    out.clear();
+    loop {
+        let available = reader.fill_buf().await?;
+        if available.is_empty() {
+            break;
+        }
+        if let Some(nl_pos) = available.iter().position(|&b| b == b'\n') {
+            let to_copy = nl_pos + 1;
+            if buf.len().saturating_add(to_copy) > max_bytes {
+                reader.consume(to_copy);
+                buf.clear();
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "IPC frame exceeds maximum allowed size",
+                ));
+            }
+            buf.extend_from_slice(&available[..to_copy]);
+            reader.consume(to_copy);
+            break;
+        } else {
+            let len = available.len();
+            if buf.len().saturating_add(len) > max_bytes {
+                reader.consume(len);
+                buf.clear();
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "IPC frame exceeds maximum allowed size",
+                ));
+            }
+            buf.extend_from_slice(available);
+            reader.consume(len);
+        }
+    }
+    let n = buf.len();
+    let text = std::str::from_utf8(buf)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    out.push_str(text);
+    buf.clear();
+    Ok(n)
+}
+
 async fn handle_client_connection(runtime: Arc<DaemonRuntime>, stream: UnixStream) -> Result<()> {
     let (read_half, mut write_half) = stream.into_split();
     let mut reader = BufReader::new(read_half);
+    let mut raw_buf = Vec::new();
     let mut line = String::new();
 
     loop {
         line.clear();
-        let n = reader.read_line(&mut line).await?;
+        let n = match read_bounded_line(&mut reader, &mut raw_buf, &mut line, MAX_IPC_FRAME_BYTES)
+            .await
+        {
+            Ok(n) => n,
+            Err(err) if err.kind() == std::io::ErrorKind::InvalidData => {
+                let resp = DaemonResponse::err(format!("Invalid or oversized IPC frame: {}", err));
+                let encoded = serde_json::to_string(&resp)? + "\n";
+                let _ = write_half.write_all(encoded.as_bytes()).await;
+                let _ = write_half.flush().await;
+                return Ok(());
+            }
+            Err(err) => return Err(err.into()),
+        };
         if n == 0 {
             return Ok(());
         }
@@ -1796,7 +1884,7 @@ async fn handle_client_connection(runtime: Arc<DaemonRuntime>, stream: UnixStrea
                             }
                         }
                     }
-                    read_res = reader.read_line(&mut line) => {
+                    read_res = read_bounded_line(&mut reader, &mut raw_buf, &mut line, MAX_IPC_FRAME_BYTES) => {
                         match read_res {
                             Ok(0) | Err(_) => return Ok(()),
                             Ok(_) => {

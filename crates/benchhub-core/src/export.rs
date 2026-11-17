@@ -478,7 +478,7 @@ pub fn export_comparison_png(runs: &[RunResult]) -> Result<PathBuf, String> {
         return Err(format!("Failed to create target directory: {}", e));
     }
 
-    let timestamp_str = Utc::now().format("%Y%m%d_%H%M%S").to_string();
+    let timestamp_str = Utc::now().format("%Y%m%d_%H%M%S_%3f").to_string();
     let file_path = benchhub_dir.join(format!("benchhub_comparison_{}.png", timestamp_str));
 
     pixmap

@@ -365,7 +365,6 @@ fn ProfileCard(
     on_uninstall_click: Callback<String>,
     on_custom_args_click: Callback<String>,
 ) -> impl IntoView {
-    let l = lang.get_untracked();
     let id = profile.id.clone();
     let card_id = StoredValue::new(id.clone());
 
@@ -376,15 +375,13 @@ fn ProfileCard(
         .or_else(|| profile.version.clone())
         .or_else(|| versions.first().map(|v| v.version.clone()))
         .unwrap_or_default();
-    let fallback_desc = profile.description.clone().unwrap_or_default();
-    let display_name = bench_name(l, &id, &profile.name).to_string();
-    let display_desc = bench_desc(l, &id, &fallback_desc).to_string();
-    let display_cat = translate_category(l, &profile.category);
+    let raw_name = StoredValue::new(profile.name.clone());
+    let fallback_desc = StoredValue::new(profile.description.clone().unwrap_or_default());
+    let raw_category = StoredValue::new(profile.category.clone());
     let size_str = profile.display_download_size();
-    let score_unit_display = profile
-        .score_unit
-        .as_deref()
-        .map(|u| translate_score_unit(l, u).to_string());
+    let score_unit_raw = profile.score_unit.clone();
+    let id_for_select = id.clone();
+    let default_ver_for_select = default_ver.clone();
 
     let is_installed = Memo::new(move |_| {
         let cur_id = card_id.get_value();
@@ -412,7 +409,14 @@ fn ProfileCard(
         >
             <div>
                 <div class="card-header-row">
-                    <h3>{display_name}</h3>
+                    <h3>
+                        {move || {
+                            let l = lang.get();
+                            card_id.with_value(|cid| {
+                                raw_name.with_value(|rn| bench_name(l, cid, rn).to_string())
+                            })
+                        }}
+                    </h3>
                     <div class="catalog-card-badges">
                         {move || {
                             if is_selected.get() {
@@ -426,26 +430,53 @@ fn ProfileCard(
                                 view! { <span></span> }.into_any()
                             }
                         }}
-                        <span class="badge badge-info">{display_cat}</span>
+                        <span class="badge badge-info">
+                            {move || {
+                                let l = lang.get();
+                                raw_category.with_value(|cat| translate_category(l, cat))
+                            }}
+                        </span>
                     </div>
                 </div>
 
-                <p class="catalog-card-desc">{display_desc}</p>
+                <p class="catalog-card-desc">
+                    {move || {
+                        let l = lang.get();
+                        card_id.with_value(|cid| {
+                            fallback_desc.with_value(|fd| bench_desc(l, cid, fd).to_string())
+                        })
+                    }}
+                </p>
 
                 <div class="card-meta">
-                    <div><strong>{t(l, "approx_size")}</strong> " " {size_str}</div>
-                    {score_unit_display.map(|unit| view! {
-                        <div class="catalog-card-meta-row">
-                            <strong>{t(l, "score_unit_label")}</strong> " " {unit}
-                        </div>
+                    <div><strong>{move || t(lang.get(), "approx_size")}</strong> " " {size_str}</div>
+                    {score_unit_raw.map(|unit| {
+                        let unit_val = StoredValue::new(unit);
+                        view! {
+                            <div class="catalog-card-meta-row">
+                                <strong>{move || t(lang.get(), "score_unit_label")}</strong>
+                                " "
+                                {move || {
+                                    let l = lang.get();
+                                    unit_val.with_value(|u| translate_score_unit(l, u).to_string())
+                                }}
+                            </div>
+                        }
                     })}
                     <div
                         class="catalog-version-row"
                         on:click=move |ev| ev.stop_propagation()
                     >
-                        <label><strong>{t(l, "version_label")}</strong></label>
+                        <label><strong>{move || t(lang.get(), "version_label")}</strong></label>
                         <select
                             style="flex: 1;"
+                            prop:value=move || {
+                                selected_versions
+                                    .get()
+                                    .get(&id_for_select)
+                                    .cloned()
+                                    .unwrap_or_else(|| default_ver_for_select.clone())
+                            }
                             on:click=move |ev| ev.stop_propagation()
                             on:keydown=move |ev| ev.stop_propagation()
                             on:change=move |ev| {
@@ -455,13 +486,20 @@ fn ProfileCard(
                             {versions.into_iter().map(|v| {
                                 let ver_val = v.version;
                                 let is_sel = ver_val == default_ver;
-                                let ver_disp = if spec.translate_version_labels {
-                                    translate_stress_version(l, &ver_val)
-                                } else {
-                                    ver_val.clone()
-                                };
+                                let ver_disp_val = StoredValue::new(ver_val.clone());
                                 view! {
-                                    <option value=ver_val selected=is_sel>{ver_disp}</option>
+                                    <option value=ver_val selected=is_sel>
+                                        {move || {
+                                            let l = lang.get();
+                                            ver_disp_val.with_value(|vd| {
+                                                if spec.translate_version_labels {
+                                                    translate_stress_version(l, vd)
+                                                } else {
+                                                    vd.clone()
+                                                }
+                                            })
+                                        }}
+                                    </option>
                                 }
                             }).collect_view()}
                         </select>
@@ -583,7 +621,13 @@ pub fn ProfileCatalogTab(
                     .into_iter()
                     .filter(|p| p.is_stress_test() == spec.is_stress)
                     .collect();
-                selected_versions.set(default_versions_map(&subset));
+                let mut ver_map = default_versions_map(&subset);
+                for item in queue_items.get_untracked() {
+                    if !item.version.is_empty() && ver_map.contains_key(&item.id) {
+                        ver_map.insert(item.id, item.version);
+                    }
+                }
+                selected_versions.set(ver_map);
                 profiles.set(subset);
             }
             Err(err) => status_toast.set(Some((err, true))),

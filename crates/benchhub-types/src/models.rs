@@ -115,7 +115,8 @@ impl BenchmarkProfile {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct TelemetryData {
     pub timestamp: i64,
     pub cpu_temp: f32,
@@ -152,6 +153,7 @@ fn default_power_profile_str() -> String {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct RunResult {
     pub id: i64,
     pub benchmark_id: String,
@@ -369,34 +371,52 @@ pub struct RunComparisonDiff {
 
 impl RunComparisonDiff {
     pub fn calculate(run_a: RunResult, run_b: RunResult) -> Self {
+        fn safe_f32_diff(b: f32, a: f32) -> f32 {
+            let diff = b - a;
+            if diff.is_finite() {
+                diff
+            } else {
+                0.0
+            }
+        }
+
         let (score_diff, score_diff_pct) = match (run_a.score, run_b.score) {
-            (Some(sa), Some(sb)) => {
+            (Some(sa), Some(sb)) if sa.is_finite() && sb.is_finite() => {
                 let diff = sb - sa;
-                let pct = if sa.abs() > 0.0001 {
-                    (diff / sa) * 100.0
+                if diff.is_finite() {
+                    let pct = if sa.abs() > 0.0001 {
+                        let raw_pct = (diff / sa) * 100.0;
+                        if raw_pct.is_finite() {
+                            Some(raw_pct)
+                        } else {
+                            None
+                        }
+                    } else {
+                        Some(0.0)
+                    };
+                    (Some(diff), pct)
                 } else {
-                    0.0
-                };
-                (Some(diff), Some(pct))
+                    (None, None)
+                }
             }
             _ => (None, None),
         };
 
-        let duration_diff_secs = run_b.duration_secs - run_a.duration_secs;
+        let duration_diff_secs = safe_f32_diff(run_b.duration_secs, run_a.duration_secs);
 
-        let avg_cpu_usage_diff = run_b.avg_cpu_usage - run_a.avg_cpu_usage;
-        let peak_cpu_usage_diff = run_b.peak_cpu_usage - run_a.peak_cpu_usage;
-        let avg_cpu_temp_diff = run_b.avg_cpu_temp - run_a.avg_cpu_temp;
-        let peak_cpu_temp_diff = run_b.peak_cpu_temp - run_a.peak_cpu_temp;
+        let avg_cpu_usage_diff = safe_f32_diff(run_b.avg_cpu_usage, run_a.avg_cpu_usage);
+        let peak_cpu_usage_diff = safe_f32_diff(run_b.peak_cpu_usage, run_a.peak_cpu_usage);
+        let avg_cpu_temp_diff = safe_f32_diff(run_b.avg_cpu_temp, run_a.avg_cpu_temp);
+        let peak_cpu_temp_diff = safe_f32_diff(run_b.peak_cpu_temp, run_a.peak_cpu_temp);
         let avg_cpu_freq_diff_mhz =
             (run_b.avg_cpu_freq_mhz as i32) - (run_a.avg_cpu_freq_mhz as i32);
         let peak_cpu_freq_diff_mhz =
             (run_b.peak_cpu_freq_mhz as i32) - (run_a.peak_cpu_freq_mhz as i32);
 
-        let avg_gpu_usage_diff = run_b.avg_gpu_usage - run_a.avg_gpu_usage;
-        let peak_gpu_usage_diff = run_b.peak_gpu_usage - run_a.peak_gpu_usage;
-        let avg_gpu_temp_diff = run_b.avg_gpu_temp - run_a.avg_gpu_temp;
-        let peak_gpu_temp_diff = run_b.peak_gpu_temp - run_a.peak_gpu_temp;
+        let avg_gpu_usage_diff = safe_f32_diff(run_b.avg_gpu_usage, run_a.avg_gpu_usage);
+        let peak_gpu_usage_diff = safe_f32_diff(run_b.peak_gpu_usage, run_a.peak_gpu_usage);
+        let avg_gpu_temp_diff = safe_f32_diff(run_b.avg_gpu_temp, run_a.avg_gpu_temp);
+        let peak_gpu_temp_diff = safe_f32_diff(run_b.peak_gpu_temp, run_a.peak_gpu_temp);
         let avg_gpu_freq_diff_mhz =
             (run_b.avg_gpu_freq_mhz as i32) - (run_a.avg_gpu_freq_mhz as i32);
         let peak_gpu_freq_diff_mhz =
@@ -405,17 +425,17 @@ impl RunComparisonDiff {
             (run_b.avg_vram_freq_mhz as i32) - (run_a.avg_vram_freq_mhz as i32);
         let peak_vram_freq_diff_mhz =
             (run_b.peak_vram_freq_mhz as i32) - (run_a.peak_vram_freq_mhz as i32);
-        let avg_gpu_power_diff_w = run_b.avg_gpu_power_w - run_a.avg_gpu_power_w;
-        let peak_gpu_power_diff_w = run_b.peak_gpu_power_w - run_a.peak_gpu_power_w;
+        let avg_gpu_power_diff_w = safe_f32_diff(run_b.avg_gpu_power_w, run_a.avg_gpu_power_w);
+        let peak_gpu_power_diff_w = safe_f32_diff(run_b.peak_gpu_power_w, run_a.peak_gpu_power_w);
 
-        let avg_power_diff_w = run_b.avg_power_w - run_a.avg_power_w;
-        let peak_power_diff_w = run_b.peak_power_w - run_a.peak_power_w;
-        let avg_ac_power_diff_w = run_b.avg_ac_power_w - run_a.avg_ac_power_w;
-        let peak_ac_power_diff_w = run_b.peak_ac_power_w - run_a.peak_ac_power_w;
-        let avg_ram_diff_gb = run_b.avg_ram_gb - run_a.avg_ram_gb;
-        let peak_ram_diff_gb = run_b.peak_ram_gb - run_a.peak_ram_gb;
-        let avg_vram_diff_gb = run_b.avg_vram_gb - run_a.avg_vram_gb;
-        let peak_vram_diff_gb = run_b.peak_vram_gb - run_a.peak_vram_gb;
+        let avg_power_diff_w = safe_f32_diff(run_b.avg_power_w, run_a.avg_power_w);
+        let peak_power_diff_w = safe_f32_diff(run_b.peak_power_w, run_a.peak_power_w);
+        let avg_ac_power_diff_w = safe_f32_diff(run_b.avg_ac_power_w, run_a.avg_ac_power_w);
+        let peak_ac_power_diff_w = safe_f32_diff(run_b.peak_ac_power_w, run_a.peak_ac_power_w);
+        let avg_ram_diff_gb = safe_f32_diff(run_b.avg_ram_gb, run_a.avg_ram_gb);
+        let peak_ram_diff_gb = safe_f32_diff(run_b.peak_ram_gb, run_a.peak_ram_gb);
+        let avg_vram_diff_gb = safe_f32_diff(run_b.avg_vram_gb, run_a.avg_vram_gb);
+        let peak_vram_diff_gb = safe_f32_diff(run_b.peak_vram_gb, run_a.peak_vram_gb);
 
         Self {
             run_a,
@@ -662,19 +682,17 @@ pub fn validate_custom_arg(arg: &str) -> Result<(), &'static str> {
     if trimmed.is_empty() {
         return Err("Argument cannot be empty");
     }
-    if trimmed == "-o"
+    if trimmed.starts_with("-o")
+        || trimmed.starts_with("-y")
         || trimmed == "--output"
-        || trimmed == "-y"
-        || trimmed.starts_with("-o=")
         || trimmed.starts_with("--output=")
-        || trimmed.starts_with("-y=")
     {
         return Err("Dangerous flag usage (-o, --output, -y) is forbidden");
     }
     if trimmed.contains("..") {
         return Err("Arguments containing path traversal ('..') are forbidden");
     }
-    if trimmed.starts_with('/') || trimmed.contains("=/") {
+    if trimmed.starts_with('/') || trimmed.contains("=/") || trimmed.contains(":/") {
         return Err("Absolute paths referencing root directory ('/') are forbidden");
     }
     if trimmed

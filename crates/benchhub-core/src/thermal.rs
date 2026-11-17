@@ -123,6 +123,7 @@ where
                 tokio::select! {
                     _ = cancel_rx.changed() => {
                         if *cancel_rx.borrow() {
+                            on_log("\n[BenchHub] Cooldown cancelled by user.\n".to_string());
                             return false;
                         }
                     }
@@ -145,6 +146,20 @@ where
             on_log(start_msg);
 
             // Launch lightweight arithmetic stress threads to warm up CPU cores
+            struct WarmupGuard {
+                is_running: Arc<AtomicBool>,
+                handles: Vec<std::thread::JoinHandle<()>>,
+            }
+
+            impl Drop for WarmupGuard {
+                fn drop(&mut self) {
+                    self.is_running.store(false, Ordering::SeqCst);
+                    for h in self.handles.drain(..) {
+                        let _ = h.join();
+                    }
+                }
+            }
+
             let is_running = Arc::new(AtomicBool::new(true));
             let num_threads = std::thread::available_parallelism()
                 .map(|n| n.get())
@@ -165,6 +180,11 @@ where
                 });
                 handles.push(handle);
             }
+
+            let warmup_guard = WarmupGuard {
+                is_running: is_running.clone(),
+                handles,
+            };
 
             let mut success = true;
 
@@ -194,6 +214,7 @@ where
                 tokio::select! {
                     _ = cancel_rx.changed() => {
                         if *cancel_rx.borrow() {
+                            on_log("\n[BenchHub] Warmup cancelled by user.\n".to_string());
                             success = false;
                             break;
                         }
@@ -202,11 +223,8 @@ where
                 }
             }
 
-            // Stop background stress threads
-            is_running.store(false, Ordering::Relaxed);
-            for h in handles {
-                let _ = h.join();
-            }
+            // Stop and join background stress threads cleanly via RAII guard
+            drop(warmup_guard);
 
             if success && start.elapsed() >= max_duration && get_temp() < warmup_target {
                 let timeout_msg = format!(

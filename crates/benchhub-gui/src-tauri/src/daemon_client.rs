@@ -1,6 +1,8 @@
 //! Thin Unix Socket IPC Client for Communicating with `benchhubd`.
 
-use benchhub_types::{DaemonEvent, DaemonInfo, DaemonPayload, DaemonRequest, DaemonResponse};
+use benchhub_types::{
+    ipc::MAX_IPC_FRAME_BYTES, DaemonEvent, DaemonInfo, DaemonPayload, DaemonRequest, DaemonResponse,
+};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -40,6 +42,27 @@ fn find_daemon_executable() -> PathBuf {
     for candidate in candidates {
         if candidate.is_file() {
             return candidate;
+        }
+    }
+
+    if let Some(path_var) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&path_var) {
+            let candidate = dir.join("benchhubd");
+            if candidate.is_file() {
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    if candidate
+                        .metadata()
+                        .map(|m| m.permissions().mode() & 0o111 != 0)
+                        .unwrap_or(false)
+                    {
+                        return candidate;
+                    }
+                }
+                #[cfg(not(unix))]
+                return candidate;
+            }
         }
     }
 
@@ -97,6 +120,54 @@ fn is_benchhubd_process(pid: i32) -> bool {
     false
 }
 
+/// Reads a single newline-terminated UTF-8 IPC frame bounded by `max_bytes`.
+async fn read_bounded_line<R: tokio::io::AsyncBufRead + Unpin>(
+    reader: &mut R,
+    buf: &mut Vec<u8>,
+    out: &mut String,
+    max_bytes: usize,
+) -> std::io::Result<usize> {
+    out.clear();
+    loop {
+        let available = reader.fill_buf().await?;
+        if available.is_empty() {
+            break;
+        }
+        if let Some(nl_pos) = available.iter().position(|&b| b == b'\n') {
+            let to_copy = nl_pos + 1;
+            if buf.len().saturating_add(to_copy) > max_bytes {
+                reader.consume(to_copy);
+                buf.clear();
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "IPC frame exceeds maximum allowed size",
+                ));
+            }
+            buf.extend_from_slice(&available[..to_copy]);
+            reader.consume(to_copy);
+            break;
+        } else {
+            let len = available.len();
+            if buf.len().saturating_add(len) > max_bytes {
+                reader.consume(len);
+                buf.clear();
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "IPC frame exceeds maximum allowed size",
+                ));
+            }
+            buf.extend_from_slice(available);
+            reader.consume(len);
+        }
+    }
+    let n = buf.len();
+    let text = std::str::from_utf8(buf)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    out.push_str(text);
+    buf.clear();
+    Ok(n)
+}
+
 /// Asynchronous IPC client managing daemon auto-launch, RPC calls, and live event forwarding.
 pub struct DaemonClient {
     socket_path: PathBuf,
@@ -141,9 +212,9 @@ impl DaemonClient {
             .map_err(|e| format!("Failed to flush daemon socket: {}", e))?;
 
         let mut reader = BufReader::new(read_half);
+        let mut raw_buf = Vec::new();
         let mut line = String::new();
-        let n = reader
-            .read_line(&mut line)
+        let n = read_bounded_line(&mut reader, &mut raw_buf, &mut line, MAX_IPC_FRAME_BYTES)
             .await
             .map_err(|e| format!("Failed to read response from daemon socket: {}", e))?;
         if n == 0 {
@@ -465,6 +536,10 @@ impl DaemonClient {
 
     /// Maintains a persistent event subscription with `benchhubd` and forwards events to the WebView.
     pub async fn run_event_forwarder(self: Arc<Self>, app_handle: tauri::AppHandle) {
+        const INITIAL_BACKOFF_MS: u64 = 250;
+        const MAX_BACKOFF_MS: u64 = 3000;
+        let mut backoff_ms = INITIAL_BACKOFF_MS;
+
         while !self.shutting_down.load(Ordering::Acquire) {
             if let Err(err) = self.ensure_daemon().await {
                 if self.shutting_down.load(Ordering::Acquire) {
@@ -474,7 +549,8 @@ impl DaemonClient {
                     "[benchhub-desktop] Daemon unavailable for event stream: {}",
                     err
                 );
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                tokio::time::sleep(std::time::Duration::from_millis(backoff_ms)).await;
+                backoff_ms = (backoff_ms * 2).min(MAX_BACKOFF_MS);
                 continue;
             }
 
@@ -486,7 +562,8 @@ impl DaemonClient {
                     }
                     eprintln!("[benchhub-desktop] Failed to open event stream: {}", err);
                     self.verified.store(false, Ordering::Release);
-                    tokio::time::sleep(std::time::Duration::from_millis(750)).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(backoff_ms)).await;
+                    backoff_ms = (backoff_ms * 2).min(MAX_BACKOFF_MS);
                     continue;
                 }
             };
@@ -503,7 +580,8 @@ impl DaemonClient {
                 if self.shutting_down.load(Ordering::Acquire) {
                     break;
                 }
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                tokio::time::sleep(std::time::Duration::from_millis(backoff_ms)).await;
+                backoff_ms = (backoff_ms * 2).min(MAX_BACKOFF_MS);
                 continue;
             }
 
@@ -513,12 +591,16 @@ impl DaemonClient {
             }
 
             let mut reader = BufReader::new(read_half);
+            let mut raw_buf = Vec::new();
             let mut line = String::new();
             loop {
                 line.clear();
-                match reader.read_line(&mut line).await {
+                match read_bounded_line(&mut reader, &mut raw_buf, &mut line, MAX_IPC_FRAME_BYTES)
+                    .await
+                {
                     Ok(0) => break,
                     Ok(_) => {
+                        backoff_ms = INITIAL_BACKOFF_MS;
                         let trimmed = line.trim();
                         if trimmed.is_empty() {
                             continue;
@@ -562,7 +644,8 @@ impl DaemonClient {
             if self.shutting_down.load(Ordering::Acquire) {
                 break;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(750)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(backoff_ms)).await;
+            backoff_ms = (backoff_ms * 2).min(MAX_BACKOFF_MS);
         }
     }
 }

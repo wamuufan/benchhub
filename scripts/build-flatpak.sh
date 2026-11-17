@@ -46,7 +46,7 @@ if [ ! -s "$PREBUILT_DIR/libGLU.so.1" ]; then
         cp -L /usr/lib64/libGLU.so.1 "$PREBUILT_DIR/libGLU.so.1"
     else
         TMP_GLU="$(mktemp -d)"
-        curl -fsSL "http://archive.ubuntu.com/ubuntu/pool/main/libg/libglu/libglu1-mesa_9.0.2-1.1build1_amd64.deb" -o "$TMP_GLU/glu.deb"
+        curl -fsSL "https://mirrors.edge.kernel.org/ubuntu/pool/main/libg/libglu/libglu1-mesa_9.0.2-1.1build1_amd64.deb" -o "$TMP_GLU/glu.deb"
         ar p "$TMP_GLU/glu.deb" data.tar.zst | tar --zstd -xf - ./usr/lib/x86_64-linux-gnu/libGLU.so.1.3.1 -O > "$PREBUILT_DIR/libGLU.so.1"
         rm -rf "$TMP_GLU"
     fi

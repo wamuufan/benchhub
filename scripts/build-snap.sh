@@ -49,11 +49,8 @@ if [ ! -f target/release/benchhubd ] || [ ! -f target/release/benchhub-desktop ]
 fi
 
 echo "Starting Snapcraft build..."
-EXTRA_ARGS=""
-if [ "$#" -gt 0 ]; then
-    EXTRA_ARGS="$(printf '%q ' "$@")"
-fi
-sg lxd -c "$(printf '%q' "$SNAPCRAFT_BIN") pack --use-lxd $EXTRA_ARGS"
+EXTRA_ARGS="$*"
+sg lxd -c "\"$SNAPCRAFT_BIN\" pack --use-lxd${EXTRA_ARGS:+ $EXTRA_ARGS}"
 
 SNAP_FILE="$(ls -1t benchhub_*.snap 2>/dev/null | head -n 1 || true)"
 if [ -n "$SNAP_FILE" ]; then

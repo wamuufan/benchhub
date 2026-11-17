@@ -156,9 +156,7 @@ pub fn App() -> impl IntoView {
     spawn_toast_listener(
         status_toast,
         tauri_bridge::listen_telemetry(move |data| {
-            if active_tab.get_untracked() == AppTab::Monitor {
-                live_telemetry.set(Some(data));
-            }
+            live_telemetry.set(Some(data));
         }),
     );
 
@@ -180,7 +178,7 @@ pub fn App() -> impl IntoView {
     leptos::task::spawn_local(async move {
         loop {
             crate::theme::sleep_ms(1000).await;
-            if active_run.get_untracked().is_some() {
+            if active_run.with_untracked(|r| r.is_some()) {
                 now_epoch_ms.set(js_sys::Date::now() as i64);
             }
         }

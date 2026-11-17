@@ -181,10 +181,11 @@ fn detect_kde_theme(home: &str) -> Option<SystemThemeInfo> {
 fn detect_gtk_theme(home: &str) -> Option<SystemThemeInfo> {
     let mut theme_name = String::new();
     let mut prefer_dark = false;
+    let mut dark_preference_known = false;
 
     for ini_path in &[
-        format!("{home}/.config/gtk-3.0/settings.ini"),
         format!("{home}/.config/gtk-4.0/settings.ini"),
+        format!("{home}/.config/gtk-3.0/settings.ini"),
     ] {
         if let Ok(content) = std::fs::read_to_string(ini_path) {
             for line in content.lines() {
@@ -195,7 +196,8 @@ fn detect_gtk_theme(home: &str) -> Option<SystemThemeInfo> {
                             theme_name = v.trim().to_string()
                         }
                         "gtk-application-prefer-dark-theme" => {
-                            prefer_dark = v.trim() == "1" || v.trim().eq_ignore_ascii_case("true")
+                            prefer_dark = v.trim() == "1" || v.trim().eq_ignore_ascii_case("true");
+                            dark_preference_known = true;
                         }
                         _ => {}
                     }
@@ -219,13 +221,16 @@ fn detect_gtk_theme(home: &str) -> Option<SystemThemeInfo> {
         }
     }
 
-    if let Ok(out) = std::process::Command::new("gsettings")
-        .args(["get", "org.gnome.desktop.interface", "color-scheme"])
-        .output()
-    {
-        let s = String::from_utf8_lossy(&out.stdout);
-        if s.contains("prefer-dark") {
-            prefer_dark = true;
+    let theme_has_dark = theme_name.to_lowercase().contains("-dark");
+    if !dark_preference_known && !theme_has_dark {
+        if let Ok(out) = std::process::Command::new("gsettings")
+            .args(["get", "org.gnome.desktop.interface", "color-scheme"])
+            .output()
+        {
+            let s = String::from_utf8_lossy(&out.stdout);
+            if s.contains("prefer-dark") {
+                prefer_dark = true;
+            }
         }
     }
 
@@ -239,27 +244,47 @@ fn detect_gtk_theme(home: &str) -> Option<SystemThemeInfo> {
     let mut sel_color = None;
     let mut fg_color = None;
 
+    let mut css_candidates = vec![
+        format!("{home}/.config/gtk-4.0/gtk.css"),
+        format!("{home}/.config/gtk-3.0/gtk.css"),
+    ];
     if !theme_name.is_empty() {
-        for base in &[
+        css_candidates.extend([
+            format!("{home}/.themes/{theme_name}/gtk-4.0/gtk.css"),
             format!("{home}/.themes/{theme_name}/gtk-3.0/gtk.css"),
+            format!("{home}/.local/share/themes/{theme_name}/gtk-4.0/gtk.css"),
             format!("{home}/.local/share/themes/{theme_name}/gtk-3.0/gtk.css"),
+            format!("/usr/share/themes/{theme_name}/gtk-4.0/gtk.css"),
             format!("/usr/share/themes/{theme_name}/gtk-3.0/gtk.css"),
-        ] {
-            if let Ok(css) = std::fs::read_to_string(base) {
-                for line in css.lines() {
-                    if let Some(rest) = line.trim().strip_prefix("@define-color ") {
-                        let mut parts = rest.split_whitespace();
-                        if let (Some(name), Some(val)) = (parts.next(), parts.next()) {
-                            let color = val.trim_end_matches(';').to_string();
-                            match name {
-                                "theme_bg_color" => bg_color = Some(color),
-                                "theme_selected_bg_color" => sel_color = Some(color),
-                                "theme_fg_color" => fg_color = Some(color),
-                                _ => {}
+        ]);
+    }
+
+    for css_path in &css_candidates {
+        if let Ok(css) = std::fs::read_to_string(css_path) {
+            for line in css.lines() {
+                if let Some(rest) = line.trim().strip_prefix("@define-color ") {
+                    let mut parts = rest.split_whitespace();
+                    if let (Some(name), Some(val)) = (parts.next(), parts.next()) {
+                        let color = val.trim_end_matches(';').trim();
+                        if color.is_empty() || color.starts_with('@') {
+                            continue;
+                        }
+                        match name {
+                            "theme_bg_color" => {
+                                bg_color.get_or_insert_with(|| color.to_string());
                             }
+                            "theme_selected_bg_color" => {
+                                sel_color.get_or_insert_with(|| color.to_string());
+                            }
+                            "theme_fg_color" => {
+                                fg_color.get_or_insert_with(|| color.to_string());
+                            }
+                            _ => {}
                         }
                     }
                 }
+            }
+            if bg_color.is_some() && sel_color.is_some() && fg_color.is_some() {
                 break;
             }
         }

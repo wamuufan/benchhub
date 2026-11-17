@@ -40,6 +40,7 @@ const GEEKBENCH_HOST: &str = "browser.geekbench.com";
 const MAX_HEADER_BYTES: usize = 64 * 1024;
 const MAX_CAPTURE_BYTES: usize = 16 * 1024 * 1024;
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(30);
+const UPSTREAM_IO_TIMEOUT: Duration = Duration::from_secs(15);
 const SHUTDOWN_GRACE: Duration = Duration::from_millis(250);
 
 /// Captured scores parsed from a Geekbench upload JSON document.
@@ -321,6 +322,7 @@ impl GeekbenchProxySession {
         });
 
         let accept_task = tokio::spawn(async move {
+            let mut conn_tasks = tokio::task::JoinSet::new();
             loop {
                 tokio::select! {
                     biased;
@@ -329,11 +331,12 @@ impl GeekbenchProxySession {
                             break;
                         }
                     }
+                    Some(_) = conn_tasks.join_next(), if !conn_tasks.is_empty() => {}
                     accepted = listener.accept() => {
                         match accepted {
                             Ok((stream, _peer)) => {
                                 let conn_state = state.clone();
-                                tokio::spawn(async move {
+                                conn_tasks.spawn(async move {
                                     if let Err(err) = handle_client_connection(stream, conn_state).await {
                                         debug!("Geekbench proxy connection ended: {:#}", err);
                                     }
@@ -347,6 +350,7 @@ impl GeekbenchProxySession {
                     }
                 }
             }
+            conn_tasks.shutdown().await;
         });
 
         Ok(Self {
@@ -506,13 +510,19 @@ async fn dial_upstream(host: &str, port: u16, mode: &UpstreamMode) -> Result<Tcp
     #[cfg(test)]
     if let UpstreamMode::MockTls { addr, .. } = mode {
         if host.eq_ignore_ascii_case(GEEKBENCH_HOST) {
-            let stream = TcpStream::connect(*addr).await?;
+            let stream = tokio::time::timeout(UPSTREAM_IO_TIMEOUT, TcpStream::connect(*addr))
+                .await
+                .context("Timed out connecting to mock upstream")?
+                .context("Failed connecting to mock upstream")?;
             let _ = stream.set_nodelay(true);
             return Ok(stream);
         }
     }
     let _ = mode;
-    let stream = TcpStream::connect((host, port)).await?;
+    let stream = tokio::time::timeout(UPSTREAM_IO_TIMEOUT, TcpStream::connect((host, port)))
+        .await
+        .with_context(|| format!("Timed out connecting to upstream {}:{}", host, port))?
+        .with_context(|| format!("Failed connecting to upstream {}:{}", host, port))?;
     let _ = stream.set_nodelay(true);
     Ok(stream)
 }
@@ -554,13 +564,24 @@ async fn handle_connect_tunnel(
 
     let server_name = ServerName::try_from(host.to_string())
         .context("Invalid TLS server name for Geekbench upload host")?;
-    let upstream_tls = match state.tls_connector.connect(server_name, upstream_tcp).await {
-        Ok(tls) => tls,
-        Err(err) => {
+    let upstream_tls = match tokio::time::timeout(
+        UPSTREAM_IO_TIMEOUT,
+        state.tls_connector.connect(server_name, upstream_tcp),
+    )
+    .await
+    {
+        Ok(Ok(tls)) => tls,
+        Ok(Err(err)) => {
             let _ = client
                 .write_all(b"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\n")
                 .await;
             return Err(err).context("Upstream TLS handshake with browser.geekbench.com failed");
+        }
+        Err(_) => {
+            let _ = client
+                .write_all(b"HTTP/1.1 504 Gateway Timeout\r\nConnection: close\r\n\r\n")
+                .await;
+            anyhow::bail!("Upstream TLS handshake with browser.geekbench.com timed out");
         }
     };
 
@@ -570,11 +591,13 @@ async fn handle_connect_tunnel(
     client.flush().await?;
 
     let client_prefixed = PrefixedStream::new(client, leftover);
-    let client_tls = state
-        .tls_acceptor
-        .accept(client_prefixed)
-        .await
-        .context("Client TLS handshake with local Geekbench relay failed")?;
+    let client_tls = tokio::time::timeout(
+        UPSTREAM_IO_TIMEOUT,
+        state.tls_acceptor.accept(client_prefixed),
+    )
+    .await
+    .context("Client TLS handshake with local Geekbench relay timed out")?
+    .context("Client TLS handshake with local Geekbench relay failed")?;
 
     relay_with_http_tap(
         client_tls,

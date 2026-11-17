@@ -372,7 +372,7 @@ pub async fn set_permissions_recursive(dir: &Path, _mode: u32) -> Result<()> {
     ensure_executable_permissions(dir).await
 }
 
-/// Walks `dir` and marks scripts, binaries inside `/bin` or `/extracted`, and ELF executables as `0o755`.
+/// Walks `dir` and marks scripts, binaries inside `/bin`, and ELF executables as `0o755`.
 pub async fn ensure_executable_permissions(dir: &Path) -> Result<()> {
     if !tokio::fs::try_exists(dir).await.unwrap_or(false) {
         return Ok(());
@@ -408,7 +408,7 @@ pub async fn ensure_executable_permissions(dir: &Path) -> Result<()> {
                     || file_name == "Superposition"
                     || file_name == "main";
                 let path_str = path.to_string_lossy();
-                let is_in_bin = path_str.contains("/bin") || path_str.contains("/extracted");
+                let is_in_bin = path_str.contains("/bin");
 
                 let needs_chmod = if is_sh || is_in_bin {
                     true

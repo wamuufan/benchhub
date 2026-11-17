@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "[INFO] Stopping any running BenchHub processes..."
-pkill -u "$(id -u)" -x benchhub-desktop 2>/dev/null || true
+pkill -u "$(id -u)" -f '/benchhub-desktop($| )' 2>/dev/null || pkill -u "$(id -u)" -x benchhub-deskto 2>/dev/null || true
 pkill -u "$(id -u)" -x benchhubd 2>/dev/null || true
 
 BIN_DIR="${HOME}/.local/bin/Benchhub"

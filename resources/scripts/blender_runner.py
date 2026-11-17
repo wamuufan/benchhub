@@ -17,6 +17,8 @@ def find_file(patterns):
 def resolve_device_type(explicit_device_type, requested_device_type, env):
     if explicit_device_type and requested_device_type.upper() != "AUTO":
         return requested_device_type
+    if env.get("BENCHHUB_FORCE_IGPU") == "1":
+        return "CPU"
     nv_offload = env.get("__NV_PRIME_RENDER_OFFLOAD", "0")
     if nv_offload == "1":
         return "OPTIX"

@@ -236,6 +236,8 @@ impl TerminalRingBuffer {
     }
 
     fn write_segment(&mut self, seg: &str) {
+        const MAX_LINE_BYTES: usize = 16 * 1024;
+
         if seg.is_empty() {
             return;
         }
@@ -245,10 +247,23 @@ impl TerminalRingBuffer {
                     last.clear();
                     self.cursor_at_line_start = false;
                 }
-                last.push_str(seg);
+                let remaining = MAX_LINE_BYTES.saturating_sub(last.len());
+                if remaining > 0 {
+                    if seg.len() <= remaining {
+                        last.push_str(seg);
+                    } else {
+                        let cut = floor_char_boundary(seg, remaining);
+                        last.push_str(&seg[..cut]);
+                    }
+                }
             }
         } else {
-            self.lines.push_back(seg.to_string());
+            let bounded = if seg.len() <= MAX_LINE_BYTES {
+                seg
+            } else {
+                &seg[..floor_char_boundary(seg, MAX_LINE_BYTES)]
+            };
+            self.lines.push_back(bounded.to_string());
             self.has_partial_line = true;
             self.cursor_at_line_start = false;
             self.trim();
@@ -282,6 +297,17 @@ impl std::fmt::Display for TerminalRingBuffer {
         }
         Ok(())
     }
+}
+
+fn floor_char_boundary(s: &str, index: usize) -> usize {
+    if index >= s.len() {
+        return s.len();
+    }
+    let mut i = index;
+    while i > 0 && !s.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
 }
 
 #[cfg(test)]
@@ -337,5 +363,22 @@ mod tests {
         ]);
         assert_eq!(buf.to_string(), "line one\nline two\nline three\n");
         assert_eq!(buf.len(), 3);
+    }
+
+    #[test]
+    fn test_line_byte_ceiling_preserves_utf8_boundaries() {
+        let mut buf = TerminalRingBuffer::new(5);
+        // 4-byte emoji repeated 5000 times = 20,000 bytes without newlines
+        let long_chunk = "🚀".repeat(5000);
+        buf.push_str(&long_chunk);
+        assert_eq!(buf.len(), 1);
+        let stored = buf.lines_vec().pop().unwrap();
+        assert!(stored.len() <= 16 * 1024);
+        assert_eq!(stored.len() % 4, 0);
+
+        // Appending more to the partial line does not exceed the ceiling
+        buf.push_str("more");
+        let stored_after = buf.lines_vec().pop().unwrap();
+        assert!(stored_after.len() <= 16 * 1024);
     }
 }

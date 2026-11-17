@@ -982,7 +982,9 @@ impl BenchmarkEngine {
                 for i in 1..caps.len() {
                     if let Some(s) = caps.get(i) {
                         if let Ok(v) = s.as_str().parse::<f64>() {
-                            return Some(v);
+                            if v.is_finite() {
+                                return Some(v);
+                            }
                         }
                     }
                 }
@@ -1068,6 +1070,21 @@ impl BenchmarkEngine {
             let _ = f.flush();
         }
 
+        if *cancel_rx.borrow() {
+            let stop_msg = "\n[BenchHub] ⏹ Benchmark stopped by user.\n".to_string();
+            if let Some(f) = &mut log_file {
+                use std::io::Write;
+                let _ = f.write_all(stop_msg.as_bytes());
+                let _ = f.flush();
+            }
+            on_output(stop_msg);
+            return Ok(BenchmarkRunOutput {
+                score: None,
+                status: "Stopped".to_string(),
+                exit_code: None,
+            });
+        }
+
         let mut command = Command::new(&resolved.executable);
         command
             .args(&effective_profile.run_args)
@@ -1150,72 +1167,90 @@ impl BenchmarkEngine {
         };
         tokio::pin!(timeout_fut);
 
-        loop {
-            tokio::select! {
-                _ = cancel_rx.changed() => {
-                    if *cancel_rx.borrow() {
-                        stopped_by_user = true;
-                        // Kill entire process group
+        if *cancel_rx.borrow() {
+            stopped_by_user = true;
+            if let Some(pid) = child_pid {
+                kill_process_group(pid);
+            }
+            let _ = child.kill().await;
+            let stop_msg = "\n[BenchHub] ⏹ Benchmark stopped by user.\n".to_string();
+            if let Some(f) = &mut log_file {
+                use std::io::Write;
+                let _ = f.write_all(stop_msg.as_bytes());
+                let _ = f.flush();
+            }
+            on_output(stop_msg);
+        } else {
+            loop {
+                tokio::select! {
+                    _ = cancel_rx.changed() => {
+                        if *cancel_rx.borrow() {
+                            stopped_by_user = true;
+                            // Kill entire process group
+                            if let Some(pid) = child_pid {
+                                kill_process_group(pid);
+                            }
+                            let _ = child.kill().await;
+                            let stop_msg = if trailing_cr {
+                                "\n\n[BenchHub] ⏹ Benchmark stopped by user.\n".to_string()
+                            } else {
+                                "\n[BenchHub] ⏹ Benchmark stopped by user.\n".to_string()
+                            };
+                            if let Some(f) = &mut log_file {
+                                use std::io::Write;
+                                let _ = f.write_all(stop_msg.as_bytes());
+                                let _ = f.flush();
+                            }
+                            on_output(stop_msg);
+                            break;
+                        }
+                    }
+                    _ = &mut timeout_fut => {
+                        timed_out = true;
                         if let Some(pid) = child_pid {
                             kill_process_group(pid);
                         }
                         let _ = child.kill().await;
-                        let stop_msg = if trailing_cr {
-                            "\n\n[BenchHub] ⏹ Benchmark stopped by user.\n".to_string()
-                        } else {
-                            "\n[BenchHub] ⏹ Benchmark stopped by user.\n".to_string()
-                        };
+                        let timeout_msg = format!(
+                            "\n[BenchHub] ⏱ Timeout: Benchmark exceeded maximum duration ({} s) and was terminated.\n",
+                            timeout_secs.unwrap_or(0)
+                        );
                         if let Some(f) = &mut log_file {
                             use std::io::Write;
-                            let _ = f.write_all(stop_msg.as_bytes());
+                            let _ = f.write_all(timeout_msg.as_bytes());
                             let _ = f.flush();
                         }
-                        on_output(stop_msg);
+                        on_output(timeout_msg);
                         break;
                     }
-                }
-                _ = &mut timeout_fut => {
-                    timed_out = true;
-                    if let Some(pid) = child_pid {
-                        kill_process_group(pid);
-                    }
-                    let _ = child.kill().await;
-                    let timeout_msg = format!(
-                        "\n[BenchHub] ⏱ Timeout: Benchmark exceeded maximum duration ({} s) and was terminated.\n",
-                        timeout_secs.unwrap_or(0)
-                    );
-                    if let Some(f) = &mut log_file {
-                        use std::io::Write;
-                        let _ = f.write_all(timeout_msg.as_bytes());
-                        let _ = f.flush();
-                    }
-                    on_output(timeout_msg);
-                    break;
-                }
-                status_res = child.wait(), if exit_status.is_none() => {
-                    exit_status = status_res.ok();
-                }
-                maybe_chunk = out_rx.recv() => {
-                    match maybe_chunk {
-                        Some(chunk) => {
-                            record_run_output_chunk(
-                                chunk,
-                                &regex,
-                                &mut score,
-                                &mut trailing_cr,
-                                &mut log_file,
-                                &mut captured_tail,
-                                &mut on_output,
-                            );
-                        }
-                        None => {
-                            // All stdout and stderr closed
-                            break;
+                    status_res = child.wait(), if exit_status.is_none() => {
+                        exit_status = status_res.ok();
+                        if let Some(pid) = child_pid {
+                            kill_process_group(pid);
                         }
                     }
-                }
-                _ = tokio::time::sleep(tokio::time::Duration::from_millis(150)), if exit_status.is_some() => {
-                    break;
+                    maybe_chunk = out_rx.recv() => {
+                        match maybe_chunk {
+                            Some(chunk) => {
+                                record_run_output_chunk(
+                                    chunk,
+                                    &regex,
+                                    &mut score,
+                                    &mut trailing_cr,
+                                    &mut log_file,
+                                    &mut captured_tail,
+                                    &mut on_output,
+                                );
+                            }
+                            None => {
+                                // All stdout and stderr closed
+                                break;
+                            }
+                        }
+                    }
+                    _ = tokio::time::sleep(tokio::time::Duration::from_millis(150)), if exit_status.is_some() => {
+                        break;
+                    }
                 }
             }
         }
@@ -1280,7 +1315,12 @@ impl BenchmarkEngine {
             st.code()
         } else {
             match child.wait().await {
-                Ok(status) => status.code(),
+                Ok(status) => {
+                    if let Some(pid) = child_pid {
+                        kill_process_group(pid);
+                    }
+                    status.code()
+                }
                 Err(_) => None,
             }
         };
@@ -1339,8 +1379,10 @@ impl BenchmarkEngine {
                 for i in 1..caps.len() {
                     if let Some(m) = caps.get(i) {
                         if let Ok(val) = m.as_str().parse::<f64>() {
-                            score = Some(val);
-                            break;
+                            if val.is_finite() {
+                                score = Some(val);
+                                break;
+                            }
                         }
                     }
                 }

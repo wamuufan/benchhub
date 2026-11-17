@@ -8,7 +8,10 @@ use super::{apply_system_locale_async, LocalizedSelect, SelectOption};
 use crate::i18n::{t, Language};
 use crate::tauri_bridge;
 use crate::theme::{to_valid_hex_7, ThemeState};
-use benchhub_types::AppSettings;
+use benchhub_types::{
+    AppSettings, DEFAULT_TERMINAL_BUFFER_LINES, MAX_TERMINAL_BUFFER_LINES,
+    MIN_TERMINAL_BUFFER_LINES,
+};
 use leptos::prelude::*;
 
 const LANGUAGE_OPTIONS: &[SelectOption] = &[
@@ -129,6 +132,7 @@ pub fn SettingsTab(
     status_toast: RwSignal<Option<(String, bool)>>,
 ) -> impl IntoView {
     let settings = RwSignal::new(AppSettings::default());
+    let buffer_lines_input = RwSignal::new(DEFAULT_TERMINAL_BUFFER_LINES.to_string());
     let saved_notification = RwSignal::new(false);
 
     // Load current settings from the daemon
@@ -143,6 +147,7 @@ pub fn SettingsTab(
                 lang.set(Language::from_config(&loaded.language));
             }
             theme_state.apply_settings(&loaded.theme);
+            buffer_lines_input.set(loaded.terminal_buffer_lines.to_string());
             settings.set(loaded);
         }
     });
@@ -151,6 +156,7 @@ pub fn SettingsTab(
         let mut s = settings.get_untracked();
         s.theme = theme_state.to_theme_settings();
         s.sanitize();
+        buffer_lines_input.set(s.terminal_buffer_lines.to_string());
 
         leptos::task::spawn_local(async move {
             match tauri_bridge::save_settings(&s).await {
@@ -261,11 +267,27 @@ pub fn SettingsTab(
                         min="50"
                         max="1000"
                         step="50"
-                        prop:value=move || settings.get().terminal_buffer_lines.to_string()
+                        prop:value=move || buffer_lines_input.get()
                         on:input=move |ev| {
-                            if let Ok(val) = event_target_value(&ev).parse::<usize>() {
-                                settings.update(|s| s.terminal_buffer_lines = val);
+                            let raw = event_target_value(&ev);
+                            buffer_lines_input.set(raw.clone());
+                            if let Ok(val) = raw.trim().parse::<usize>() {
+                                let clamped =
+                                    val.clamp(MIN_TERMINAL_BUFFER_LINES, MAX_TERMINAL_BUFFER_LINES);
+                                settings.update(|s| s.terminal_buffer_lines = clamped);
                             }
+                        }
+                        on:blur=move |_| {
+                            let raw = buffer_lines_input.get_untracked();
+                            let normalized = raw
+                                .trim()
+                                .parse::<usize>()
+                                .map(|val| {
+                                    val.clamp(MIN_TERMINAL_BUFFER_LINES, MAX_TERMINAL_BUFFER_LINES)
+                                })
+                                .unwrap_or(DEFAULT_TERMINAL_BUFFER_LINES);
+                            settings.update(|s| s.terminal_buffer_lines = normalized);
+                            buffer_lines_input.set(normalized.to_string());
                         }
                     />
                 </SettingsRow>

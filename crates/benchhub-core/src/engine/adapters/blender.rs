@@ -29,8 +29,10 @@ pub async fn ensure_blender_runner(runner_dir: &Path) -> Result<()> {
 
     // Check if cli_path exists and is an ELF binary
     if tokio::fs::try_exists(&cli_path).await.unwrap_or(false) {
-        if let Ok(data) = tokio::fs::read(&cli_path).await {
-            if data.starts_with(b"\x7fELF") {
+        use tokio::io::AsyncReadExt;
+        if let Ok(mut file) = tokio::fs::File::open(&cli_path).await {
+            let mut header = [0u8; 4];
+            if file.read_exact(&mut header).await.is_ok() && &header == b"\x7fELF" {
                 let _ = tokio::fs::rename(&cli_path, &orig_path).await;
             }
         }
@@ -71,7 +73,10 @@ pub async fn ensure_blender_runner(runner_dir: &Path) -> Result<()> {
         for sub in &["blender-versions", "scenes", "benchmark-scripts"] {
             let src = base.join(sub);
             let dst = runner_dir.join(sub);
-            if src.exists() && !dst.exists() {
+            if tokio::fs::try_exists(&src).await.unwrap_or(false)
+                && !tokio::fs::try_exists(&dst).await.unwrap_or(false)
+                && tokio::fs::symlink_metadata(&dst).await.is_err()
+            {
                 #[cfg(unix)]
                 let _ = tokio::fs::symlink(&src, &dst).await;
             }
